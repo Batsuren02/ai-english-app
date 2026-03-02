@@ -101,10 +101,13 @@ h1, h2, h3, h4 {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
+/* No transform in fadeIn — transforms create a new CSS containing block,
+   which breaks position:fixed children (modals, panels) by making them
+   position relative to this element instead of the viewport. */
 .fade-in { animation: fadeIn 0.3s ease forwards; }
 
 @keyframes pulse-ring {

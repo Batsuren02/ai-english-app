@@ -3,21 +3,61 @@ import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu, X } from 'lucide-react'
+import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu } from 'lucide-react'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/learn', label: 'Learn', icon: Brain },
-  { href: '/words', label: 'Words', icon: BookMarked },
-  { href: '/quiz', label: 'Quiz', icon: BookOpen },
-  { href: '/stats', label: 'Stats', icon: BarChart2 },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/learn',     label: 'Learn',     icon: Brain           },
+  { href: '/words',     label: 'Words',     icon: BookMarked      },
+  { href: '/quiz',      label: 'Quiz',      icon: BookOpen        },
+  { href: '/stats',     label: 'Stats',     icon: BarChart2       },
+  { href: '/settings',  label: 'Settings',  icon: Settings        },
 ]
+
+function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  return (
+    <nav className="flex flex-col gap-0.5 px-2 flex-1">
+      {NAV.map(({ href, label, icon: Icon }) => {
+        const active = pathname === href
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onNavigate}
+            className={cn(
+              'flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm transition-all',
+              active
+                ? 'bg-[var(--accent)] text-white font-semibold'
+                : 'text-[var(--ink-light)] hover:bg-[var(--border)] hover:text-[var(--ink)]'
+            )}
+          >
+            <Icon size={16} />
+            {label}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+function SidebarHeader() {
+  return (
+    <div className="px-5 pb-5 mb-2 border-b border-[var(--border)]">
+      <h1 className="font-display text-xl text-[var(--accent)] leading-snug">
+        English<br />
+        <span className="text-[var(--ink)] text-sm font-normal font-body">Learning App</span>
+      </h1>
+    </div>
+  )
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [dark, setDark] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('theme')
@@ -31,6 +71,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     localStorage.setItem('theme', next ? 'dark' : 'light')
   }
 
+  const DarkToggle = () => (
+    <button
+      onClick={toggleDark}
+      className="flex items-center gap-2 text-xs text-[var(--ink-light)] hover:text-[var(--ink)] transition-colors p-1 rounded"
+    >
+      {dark ? <Sun size={13} /> : <Moon size={13} />}
+      {dark ? 'Light mode' : 'Dark mode'}
+    </button>
+  )
+
   return (
     <html lang="en">
       <head>
@@ -38,97 +88,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          {/* Sidebar */}
-          <nav style={{
-            width: 220,
-            background: 'var(--bg-card)',
-            borderRight: '1px solid var(--border)',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '24px 0',
-            position: 'fixed',
-            top: 0, left: 0, bottom: 0,
-            zIndex: 100,
-          }} className="hidden md:flex">
-            <div style={{ padding: '0 20px 24px', borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
-              <h1 style={{ fontSize: 20, fontFamily: 'var(--font-display)', color: 'var(--accent)', lineHeight: 1.2 }}>
-                English<br />
-                <span style={{ color: 'var(--ink)', fontSize: 14, fontWeight: 400 }}>Learning App</span>
-              </h1>
-            </div>
-            {NAV.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href
-              return (
-                <Link key={href} href={href} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 20px', margin: '2px 8px',
-                  borderRadius: 8, textDecoration: 'none',
-                  color: active ? 'white' : 'var(--ink-light)',
-                  background: active ? 'var(--accent)' : 'transparent',
-                  fontWeight: active ? 600 : 400,
-                  fontSize: 14, transition: 'all 0.15s',
-                }}>
-                  <Icon size={16} />
-                  {label}
-                </Link>
-              )
-            })}
-            <div style={{ marginTop: 'auto', padding: '0 20px' }}>
-              <button onClick={toggleDark} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--ink-light)', fontSize: 13, padding: '8px 0',
-              }}>
-                {dark ? <Sun size={14} /> : <Moon size={14} />}
-                {dark ? 'Light mode' : 'Dark mode'}
-              </button>
-            </div>
-          </nav>
+        <div className="flex min-h-screen bg-[var(--bg)]">
 
-          {/* Mobile header */}
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, height: 56,
-            background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0 16px', zIndex: 200,
-          }} className="flex md:hidden">
-            <span style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontWeight: 700 }}>EnglishApp</span>
-            <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)' }}>
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          </div>
-
-          {menuOpen && (
-            <div style={{
-              position: 'fixed', top: 56, left: 0, right: 0, bottom: 0,
-              background: 'var(--bg-card)', zIndex: 150, padding: 16,
-            }} className="flex md:hidden flex-col gap-2">
-              {NAV.map(({ href, label, icon: Icon }) => (
-                <Link key={href} href={href} onClick={() => setMenuOpen(false)} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 16px', borderRadius: 10, textDecoration: 'none',
-                  color: pathname === href ? 'white' : 'var(--ink)',
-                  background: pathname === href ? 'var(--accent)' : 'transparent',
-                  fontSize: 16,
-                }}>
-                  <Icon size={18} />
-                  {label}
-                </Link>
-              ))}
-              <button onClick={toggleDark} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)', fontSize: 16 }}>
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
-                {dark ? 'Light mode' : 'Dark mode'}
-              </button>
+          {/* ─── Desktop sidebar (md+) ─────────────────────────────── */}
+          <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-[220px] z-40
+                            bg-[var(--bg-card)] border-r border-[var(--border)] pt-6 pb-4">
+            <SidebarHeader />
+            <NavLinks pathname={pathname} />
+            <div className="px-5 pt-3 border-t border-[var(--border)] mt-2">
+              <DarkToggle />
             </div>
-          )}
+          </aside>
 
-          {/* Main content */}
-          <main style={{ flex: 1, marginLeft: 0, paddingTop: 0 }} className="md:ml-[220px] pt-14 md:pt-0">
-            <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 20px' }}>
+          {/* ─── Mobile top bar + Sheet drawer (below md) ──────────── */}
+          <header className="md:hidden fixed top-0 inset-x-0 z-50 h-14 flex items-center justify-between
+                             px-4 bg-[var(--bg-card)] border-b border-[var(--border)]">
+            <span className="font-display font-bold text-[var(--accent)] text-lg">EnglishApp</span>
+
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open menu">
+                  <Menu size={20} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="pt-12 pb-6 flex flex-col gap-0 w-[240px]">
+                <SidebarHeader />
+                <NavLinks pathname={pathname} onNavigate={() => setSheetOpen(false)} />
+                <div className="px-5 pt-3 mt-2 border-t border-[var(--border)]">
+                  <DarkToggle />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </header>
+
+          {/* ─── Main content ───────────────────────────────────────── */}
+          {/* Desktop: offset by sidebar width | Mobile: offset by top bar height */}
+          <main className="flex-1 md:ml-[220px] pt-14 md:pt-0 min-w-0">
+            <div className="max-w-[900px] mx-auto px-5 py-8">
               {children}
             </div>
           </main>
+
         </div>
       </body>
     </html>

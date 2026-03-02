@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install class-variance-authority tailwind-merge @radix-ui/react-dialog @radix-ui/react-tabs @radix-ui/react-scroll-area @radix-ui/react-select @radix-ui/react-slot @radix-ui/react-separator)",
+      "Bash(git add -A)"
+    ]
+  }
+}
