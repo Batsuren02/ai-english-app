@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { supabase, Word } from '@/lib/supabase'
+import { supabase, Word, UserProfile } from '@/lib/supabase'
 import {
   generateMCQ, generateFillBlank, generateTranslation,
   generateSpelling, generateSentence, generateMatching,
   getWeightedQuizType, pickWeightedWord, shuffleArray,
   Quiz, QuizType
 } from '@/lib/quiz-generator'
+import { pickInterleavedWord, parseInterleaveConfig } from '@/lib/interleaving'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap } from 'lucide-react'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
@@ -25,6 +26,8 @@ export default function QuizPage() {
   const [words, setWords] = useState<Word[]>([])
   const [easeMap, setEaseMap] = useState<Record<string, number>>({})
   const [weakTypeMap, setWeakTypeMap] = useState<Partial<Record<QuizType, number>>>({})
+  const [interleaveConfig, setInterleaveConfig] = useState({ newWordRatio: 0.25, categoryPenalty: 0.6 })
+  const [recentCategories, setRecentCategories] = useState<string[]>([])
   const [mode, setMode] = useState<QuizType | 'auto' | null>(null)
   const [quiz, setQuiz] = useState<Quiz | null>(null)
   const [userAnswer, setUserAnswer] = useState('')
@@ -41,10 +44,11 @@ export default function QuizPage() {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const [wordsRes, reviewsRes, logsRes] = await Promise.all([
+    const [wordsRes, reviewsRes, logsRes, profileRes] = await Promise.all([
       supabase.from('words').select('*'),
       supabase.from('reviews').select('word_id, ease_factor'),
       supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+      supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').single(),
     ])
     if (wordsRes.data) setWords(wordsRes.data)
     if (reviewsRes.data) {
@@ -65,6 +69,10 @@ export default function QuizPage() {
       }
       setWeakTypeMap(wm)
     }
+    if (profileRes.data) {
+      const config = parseInterleaveConfig(profileRes.data)
+      setInterleaveConfig(config)
+    }
     setLoading(false)
   }
 
@@ -79,7 +87,12 @@ export default function QuizPage() {
 
   function buildQuiz(type: QuizType): Quiz | null {
     if (type === 'matching') return generateMatching(words)
-    const word = pickWeightedWord(words, easeMap)
+    const word = pickInterleavedWord(words, easeMap, recentCategories, interleaveConfig.categoryPenalty)
+    // Track recent category for next word
+    setRecentCategories(prev => {
+      const updated = [word.category, ...prev.slice(0, 2)]
+      return updated
+    })
     if (type === 'mcq') return generateMCQ(word, words, Math.random() > 0.5)
     if (type === 'fill_blank') { const q = generateFillBlank(word); return q || generateMCQ(word, words) }
     if (type === 'translation') return generateTranslation(word)

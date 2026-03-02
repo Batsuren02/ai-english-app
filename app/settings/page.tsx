@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase, UserProfile } from '@/lib/supabase'
 import { Save, Copy, Check } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
+import NotificationSettings from '@/components/NotificationSettings'
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Partial<UserProfile>>({
@@ -92,8 +93,54 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Session Interleaving Settings */}
+      <div className="card" style={{ padding: '24px', marginBottom: 24 }}>
+        <h3 style={{ fontSize: 18, marginBottom: 18 }}>Session Interleaving</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              New Word Ratio: {Math.round((profile.interleave_ratio || 0.25) * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0.05"
+              max="0.5"
+              step="0.05"
+              value={profile.interleave_ratio || 0.25}
+              onChange={e => setProfile(p => ({ ...p, interleave_ratio: parseFloat(e.target.value) }))}
+              style={{ width: '100%' }}
+            />
+            <p style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 6 }}>How many new words to mix in with due words. Higher = more new words per session.</p>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Category Mixing: {Math.round((profile.interleave_category_penalty || 0.6) * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={profile.interleave_category_penalty || 0.6}
+              onChange={e => setProfile(p => ({ ...p, interleave_category_penalty: parseFloat(e.target.value) }))}
+              style={{ width: '100%' }}
+            />
+            <p style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 6 }}>How strongly to avoid repeating the same word category. Higher = better variety.</p>
+          </div>
+
+          <button className="btn-primary" onClick={save} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+            {saved ? <Check size={16} /> : <Save size={16} />}
+            {saved ? 'Saved!' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
+
+      {/* Notifications Settings */}
+      <NotificationSettings />
+
       {/* Claude prompts */}
-      <div className="card" style={{ padding: '24px' }}>
+      <div className="card" style={{ padding: '24px', marginTop: 24 }}>
         <h3 style={{ fontSize: 18, marginBottom: 6 }}>Claude Chat Prompts</h3>
         <p style={{ fontSize: 13, color: 'var(--ink-light)', marginBottom: 20 }}>Copy these prompts to use in Claude.ai chat — your free AI engine!</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
