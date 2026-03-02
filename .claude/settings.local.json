@@ -14,7 +14,8 @@
       "Bash(npx supabase migration new phase4_003_pronunciation_table)",
       "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064138_phase4_003_pronunciation_table.sql\":*)",
       "Bash(npx supabase migration new phase4_004_notifications_table)",
-      "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064151_phase4_004_notifications_table.sql\":*)"
+      "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064151_phase4_004_notifications_table.sql\":*)",
+      "Bash(git push origin main)"
     ]
   }
 }
