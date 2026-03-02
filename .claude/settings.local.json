@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm install class-variance-authority tailwind-merge @radix-ui/react-dialog @radix-ui/react-tabs @radix-ui/react-scroll-area @radix-ui/react-select @radix-ui/react-slot @radix-ui/react-separator)",
       "Bash(git add -A)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python3:*)",
+      "Bash(unzip -p \"AI_English_App_Project_Plan.docx\" word/document.xml)",
+      "Bash(npm install papaparse xlsx next-pwa idb framer-motion)"
     ]
   }
 }

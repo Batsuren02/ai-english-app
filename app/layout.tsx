@@ -3,15 +3,18 @@ import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu } from 'lucide-react'
+import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu, Upload } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import PWAInstallPrompt from '@/components/PWAInstallPrompt'
+import XPPopup from '@/components/XPPopup'
 
 const NAV = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
   { href: '/learn',     label: 'Learn',     icon: Brain           },
   { href: '/words',     label: 'Words',     icon: BookMarked      },
+  { href: '/import',    label: 'Import',    icon: Upload          },
   { href: '/quiz',      label: 'Quiz',      icon: BookOpen        },
   { href: '/stats',     label: 'Stats',     icon: BarChart2       },
   { href: '/settings',  label: 'Settings',  icon: Settings        },
@@ -86,6 +89,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>English Learning App</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0f3460" />
+        <meta name="description" content="Spaced repetition vocabulary app for English learners" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body>
         <div className="flex min-h-screen bg-[var(--bg)]">
@@ -130,6 +137,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
 
         </div>
+
+        {/* PWA Install Prompt */}
+        <PWAInstallPrompt />
+
+        {/* XP Popup Notifications */}
+        <XPPopup />
       </body>
     </html>
   )

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word, Review } from '@/lib/supabase'
 import Link from 'next/link'
 import { Brain, BookMarked, Flame, Star, TrendingUp, Zap, ChevronRight, AlertTriangle } from 'lucide-react'
+import DailyChallengeCard from '@/components/DailyChallengeCard'
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -101,6 +102,11 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Daily Challenge */}
+      <div style={{ marginBottom: 32 }}>
+        <DailyChallengeCard />
+      </div>
 
       {/* Quick Actions */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 32 }}>
