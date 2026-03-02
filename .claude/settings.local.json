@@ -6,7 +6,15 @@
       "Bash(git commit:*)",
       "Bash(python3:*)",
       "Bash(unzip -p \"AI_English_App_Project_Plan.docx\" word/document.xml)",
-      "Bash(npm install papaparse xlsx next-pwa idb framer-motion)"
+      "Bash(npm install papaparse xlsx next-pwa idb framer-motion)",
+      "Bash(npx supabase migration new phase4_001_add_columns)",
+      "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064119_phase4_001_add_columns.sql\":*)",
+      "Bash(npx supabase migration new phase4_002_reading_tables)",
+      "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064129_phase4_002_reading_tables.sql\":*)",
+      "Bash(npx supabase migration new phase4_003_pronunciation_table)",
+      "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064138_phase4_003_pronunciation_table.sql\":*)",
+      "Bash(npx supabase migration new phase4_004_notifications_table)",
+      "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064151_phase4_004_notifications_table.sql\":*)"
     ]
   }
 }

@@ -3,7 +3,7 @@ import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu, Upload } from 'lucide-react'
+import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu, Upload, FileText, Mic2, Zap } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,9 @@ const NAV = [
   { href: '/learn',     label: 'Learn',     icon: Brain           },
   { href: '/words',     label: 'Words',     icon: BookMarked      },
   { href: '/import',    label: 'Import',    icon: Upload          },
+  { href: '/reading',   label: 'Reading',   icon: FileText        },
+  { href: '/drills',    label: 'Drills',    icon: Zap             },
+  { href: '/pronunciation', label: 'Pronunciation', icon: Mic2     },
   { href: '/quiz',      label: 'Quiz',      icon: BookOpen        },
   { href: '/stats',     label: 'Stats',     icon: BarChart2       },
   { href: '/settings',  label: 'Settings',  icon: Settings        },

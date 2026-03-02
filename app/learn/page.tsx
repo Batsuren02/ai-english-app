@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { supabase, Word, Review } from '@/lib/supabase'
+import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
+import { interleaveWords, parseInterleaveConfig } from '@/lib/interleaving'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame } from 'lucide-react'
 
 type WordWithReview = Word & { review: Review; isNew?: boolean }
@@ -30,7 +31,7 @@ export default function LearnPage() {
       .lte('next_review', today)
       .limit(15)
 
-    // Get new words (no review yet = never reviewed) — interleave up to 5
+    // Get new words (no review yet = never reviewed)
     const { data: allWords } = await supabase.from('words').select('id').limit(200)
     const { data: reviewedIds } = await supabase.from('reviews').select('word_id').gt('total_reviews', 0)
     const reviewedSet = new Set((reviewedIds || []).map((r: any) => r.word_id))
@@ -52,16 +53,12 @@ export default function LearnPage() {
     setDueCount(dueItems.length)
     setNewCount(newWordsFull.length)
 
-    // Interleave: every 3 due words, inject 1 new word
-    const interleaved: WordWithReview[] = []
-    let ni = 0
-    dueItems.forEach((w, i) => {
-      interleaved.push(w)
-      if ((i + 1) % 3 === 0 && ni < newWordsFull.length) {
-        interleaved.push(newWordsFull[ni++])
-      }
-    })
-    while (ni < newWordsFull.length) interleaved.push(newWordsFull[ni++])
+    // Load user profile for interleaving config
+    const { data: profile } = await supabase.from('user_profile').select('*').single()
+    const interleaveConfig = parseInterleaveConfig(profile)
+
+    // Interleave using new algorithm
+    const interleaved: WordWithReview[] = interleaveWords(dueItems, newWordsFull, interleaveConfig)
 
     setDueWords(interleaved)
     setLoading(false)
@@ -113,6 +110,7 @@ export default function LearnPage() {
     await supabase.from('review_logs').insert({
       word_id: current.id, quiz_type: 'mcq', result: quality,
       response_time_ms: timeMs, user_answer: quality >= 3 ? current.word : '',
+      source: 'quiz'
     })
 
     // XP

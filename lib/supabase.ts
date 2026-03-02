@@ -45,6 +45,7 @@ export type ReviewLog = {
   result: number
   response_time_ms: number
   user_answer: string
+  source: 'quiz' | 'reading' | 'drill' | 'pronunciation'
   created_at: string
 }
 
@@ -60,5 +61,56 @@ export type UserProfile = {
   weak_patterns: string[]
   preferred_quiz_types: string[]
   active_hours: number[]
+  interleave_ratio: number
+  interleave_category_penalty: number
+  notification_enabled: boolean
+  notification_hour: number
+  quiet_hours_start: number
+  quiet_hours_end: number
   updated_at: string
+}
+
+export type ReadingSession = {
+  id: string
+  user_id: string
+  text_input: string
+  word_count: number
+  known_word_count: number
+  created_at: string
+}
+
+export type ReadingSessionWord = {
+  id: string
+  session_id: string
+  word_id: string
+  is_unknown: boolean
+  added_to_deck: boolean
+  created_at: string
+}
+
+export type PronunciationAttempt = {
+  id: string
+  user_id: string
+  word_id: string
+  audio_duration_ms: number
+  transcript: string
+  similarity_score: number
+  feedback: string
+  created_at: string
+}
+
+export type PushSubscription = {
+  id: string
+  user_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  created_at: string
+}
+
+export type NotificationLog = {
+  id: string
+  user_id: string
+  notification_type: string
+  sent_at: string
 }
