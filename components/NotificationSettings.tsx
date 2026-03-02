@@ -208,7 +208,7 @@ export default function NotificationSettings() {
               </div>
 
               <div>
-                <Button onClick={testNotification} variant="outline" size="sm" className="w-full">
+                <Button onClick={testNotification} variant="ghost" size="sm" className="w-full">
                   Test notification
                 </Button>
               </div>

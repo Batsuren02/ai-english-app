@@ -142,7 +142,7 @@ export default function PronunciationPage() {
                   <Button
                     onClick={() => playAudio('ref')}
                     disabled={isPlaying === 'ref'}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                   >
                     <Volume2 size={16} className="mr-2" />
@@ -180,7 +180,7 @@ export default function PronunciationPage() {
                         <Button
                           onClick={() => playAudio('user')}
                           disabled={isPlaying === 'user'}
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           className="flex-1"
                         >
@@ -189,7 +189,7 @@ export default function PronunciationPage() {
                         </Button>
                         <Button
                           onClick={() => downloadRecording(userBlob, `${selectedWord.word}-practice.webm`)}
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           className="flex-1"
                         >
@@ -229,7 +229,7 @@ export default function PronunciationPage() {
                         setCopied(true)
                         setTimeout(() => setCopied(false), 2000)
                       }}
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       className="w-full"
                     >

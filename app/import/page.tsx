@@ -39,8 +39,11 @@ export default function ImportPage() {
         audio_url: '',
       }))
 
-      // Insert into database
-      const { error } = await supabase.from('words').insert(wordsToInsert)
+      // Insert into database and get back the inserted rows (need IDs for reviews)
+      const { data: insertedWords, error } = await supabase
+        .from('words')
+        .insert(wordsToInsert)
+        .select('id')
 
       if (error) {
         // Check if it's a duplicate key error
@@ -52,6 +55,20 @@ export default function ImportPage() {
           setImportError(`Import failed: ${error.message}`)
         }
       }
+
+      // Create review entries for all successfully imported words
+      if (insertedWords && insertedWords.length > 0) {
+        const reviewRows = insertedWords.map((w: { id: string }) => ({
+          word_id: w.id,
+        }))
+        const { error: reviewError } = await supabase
+          .from('reviews')
+          .insert(reviewRows)
+
+        if (reviewError) {
+          console.error('Failed to create review entries:', reviewError)
+        }
+      }
     } catch (err) {
       setImportError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
       throw err
@@ -59,8 +76,7 @@ export default function ImportPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 pt-20 md:pt-6 md:ml-[220px]">
-      <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
           <Link href="/words">
@@ -110,6 +126,6 @@ export default function ImportPage() {
         {/* Import Form */}
         <ImportForm onImportComplete={handleImport} />
       </div>
-    </main>
+    </div>
   )
 }

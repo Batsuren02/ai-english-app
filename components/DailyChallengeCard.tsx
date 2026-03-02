@@ -105,7 +105,7 @@ export default function DailyChallengeCard() {
           </Button>
         </Link>
       ) : (
-        <Button className="w-full" disabled variant="outline">
+        <Button className="w-full" disabled variant="ghost">
           Challenge Completed! Return Tomorrow
         </Button>
       )}

@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase, Word, Review } from '@/lib/supabase'
 import { getWeakWords, calculateDrillStats, generateDrillQuiz, DEFAULT_DRILL_CONFIG, DrillConfig } from '@/lib/drill-generator'
 import { calculateSM2 } from '@/lib/srs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Quiz } from '@/lib/quiz-generator'
-import { AlertCircle, Brain, RotateCw } from 'lucide-react'
+import { AlertCircle, Brain, RotateCw, CheckCircle, XCircle } from 'lucide-react'
 
 type SessionState = 'setup' | 'drilling' | 'complete'
 
@@ -22,7 +22,9 @@ export default function DrillsPage() {
   // Drill session state
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null)
   const [userAnswer, setUserAnswer] = useState('')
+  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null)
   const [results, setResults] = useState<Array<{ word: string; correct: boolean; beforeEase: number; afterEase: number }>>([])
+  const currentIndexRef = useRef(0)
   const [currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
@@ -53,8 +55,10 @@ export default function DrillsPage() {
     }
 
     setWeakWords(weak)
+    currentIndexRef.current = 0
     setCurrentIndex(0)
     setResults([])
+    setFeedback(null)
     setState('drilling')
     generateNextQuiz(weak, 0)
   }
@@ -71,17 +75,23 @@ export default function DrillsPage() {
     if (quiz) {
       setCurrentQuiz(quiz)
       setUserAnswer('')
+      setFeedback(null)
     } else {
       // Skip if no quiz can be generated
-      setCurrentIndex(index + 1)
-      generateNextQuiz(wordList, index + 1)
+      const nextIdx = index + 1
+      currentIndexRef.current = nextIdx
+      setCurrentIndex(nextIdx)
+      generateNextQuiz(wordList, nextIdx)
     }
   }
 
   const handleSubmitAnswer = async () => {
-    if (!currentQuiz || !userAnswer.trim()) return
+    if (!currentQuiz || !userAnswer.trim() || feedback) return
 
     const correct = userAnswer.trim().toLowerCase().includes(currentQuiz.answer.toLowerCase())
+
+    // Show feedback immediately
+    setFeedback(correct ? 'correct' : 'wrong')
 
     // Calculate SM-2
     const review = reviews.find((r) => r.word_id === currentQuiz.word.id)
@@ -90,8 +100,8 @@ export default function DrillsPage() {
     const sm2Result = calculateSM2(correct ? 4 : 0, beforeEase, review?.interval_days ?? 1, review?.repetitions ?? 0)
 
     // Store result for summary
-    setResults([
-      ...results,
+    setResults(prev => [
+      ...prev,
       {
         word: currentQuiz.word.word,
         correct,
@@ -100,7 +110,7 @@ export default function DrillsPage() {
       },
     ])
 
-    // Update review in database
+    // Update review in database with proper date format
     if (review) {
       await supabase
         .from('reviews')
@@ -108,7 +118,7 @@ export default function DrillsPage() {
           ease_factor: sm2Result.ease_factor,
           interval_days: sm2Result.interval_days,
           repetitions: sm2Result.repetitions,
-          next_review: new Date(Date.now() + sm2Result.interval_days * 86400000).toISOString(),
+          next_review: new Date(Date.now() + sm2Result.interval_days * 86400000).toISOString().split('T')[0],
           total_reviews: (review.total_reviews ?? 0) + 1,
           correct_count: (review.correct_count ?? 0) + (correct ? 1 : 0),
         })
@@ -124,16 +134,24 @@ export default function DrillsPage() {
       user_answer: userAnswer,
       source: 'drill',
     })
+  }
 
-    // Move to next
-    setCurrentIndex(currentIndex + 1)
-    generateNextQuiz(weakWords, currentIndex + 1)
+  const handleNextQuestion = () => {
+    // Use ref to avoid stale closure
+    const nextIdx = currentIndexRef.current + 1
+    currentIndexRef.current = nextIdx
+    setCurrentIndex(nextIdx)
+    generateNextQuiz(weakWords, nextIdx)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmitAnswer()
+      if (feedback) {
+        handleNextQuestion()
+      } else {
+        handleSubmitAnswer()
+      }
     }
   }
 
@@ -236,19 +254,32 @@ export default function DrillsPage() {
 
             {currentQuiz.type === 'mcq' && currentQuiz.options && (
               <div className="space-y-2">
-                {currentQuiz.options.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => setUserAnswer(option)}
-                    className={`w-full p-3 rounded border text-left transition-all ${
-                      userAnswer === option
-                        ? 'border-[var(--accent)] bg-[var(--accent-light)]'
-                        : 'border-[var(--border)] hover:border-[var(--accent)]'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
+                {currentQuiz.options.map((option) => {
+                  let btnClass = 'w-full p-3 rounded border text-left transition-all '
+                  if (feedback) {
+                    if (option === currentQuiz.answer) {
+                      btnClass += 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    } else if (option === userAnswer && feedback === 'wrong') {
+                      btnClass += 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                    } else {
+                      btnClass += 'border-[var(--border)] opacity-50'
+                    }
+                  } else if (userAnswer === option) {
+                    btnClass += 'border-[var(--accent)] bg-[var(--accent-light)]'
+                  } else {
+                    btnClass += 'border-[var(--border)] hover:border-[var(--accent)]'
+                  }
+                  return (
+                    <button
+                      key={option}
+                      onClick={() => !feedback && setUserAnswer(option)}
+                      disabled={!!feedback}
+                      className={btnClass}
+                    >
+                      {option}
+                    </button>
+                  )
+                })}
               </div>
             )}
 
@@ -256,21 +287,62 @@ export default function DrillsPage() {
               <Input
                 autoFocus
                 value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
+                onChange={(e) => !feedback && setUserAnswer(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Your answer"
                 className="text-lg"
+                disabled={!!feedback}
               />
             )}
           </div>
 
-          <Button onClick={handleSubmitAnswer} disabled={!userAnswer.trim()} className="w-full">
-            Check Answer
-          </Button>
+          {/* Feedback panel */}
+          {feedback && (
+            <div className={`p-4 rounded-lg border ${
+              feedback === 'correct'
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                {feedback === 'correct' ? (
+                  <CheckCircle size={20} className="text-green-600" />
+                ) : (
+                  <XCircle size={20} className="text-red-600" />
+                )}
+                <span className={`font-semibold ${
+                  feedback === 'correct' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                }`}>
+                  {feedback === 'correct' ? 'Correct!' : 'Incorrect'}
+                </span>
+              </div>
+              {feedback === 'wrong' && (
+                <p className="text-sm text-[var(--ink-light)]">
+                  The correct answer is: <strong className="text-[var(--ink)]">{currentQuiz.answer}</strong>
+                </p>
+              )}
+              <p className="text-sm text-[var(--ink-light)] mt-1">
+                <strong>{currentQuiz.word.word}</strong>
+                {currentQuiz.word.definition && ` — ${currentQuiz.word.definition}`}
+              </p>
+            </div>
+          )}
+
+          {/* Action button */}
+          {!feedback ? (
+            <Button onClick={handleSubmitAnswer} disabled={!userAnswer.trim()} className="w-full">
+              Check Answer
+            </Button>
+          ) : (
+            <Button onClick={handleNextQuestion} className="w-full">
+              {currentIndex + 1 >= Math.min(config.sessionLength, weakWords.length)
+                ? 'Finish Session'
+                : 'Next Question'}
+            </Button>
+          )}
         </div>
       )}
 
-      {state === 'complete' && (
+      {state === 'complete' && results.length > 0 && (
         <div className="card p-6 space-y-6">
           <div className="text-center">
             <div className="text-4xl font-display text-[var(--accent)] mb-2">
@@ -301,10 +373,12 @@ export default function DrillsPage() {
             <Button
               onClick={() => {
                 setState('setup')
+                currentIndexRef.current = 0
                 setCurrentIndex(0)
                 setResults([])
+                setFeedback(null)
               }}
-              variant="outline"
+              variant="ghost"
               className="flex-1"
             >
               <RotateCw size={16} className="mr-2" />

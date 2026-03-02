@@ -82,7 +82,7 @@ export default function PWAInstallPrompt() {
         <Button
           onClick={handleDismiss}
           size="sm"
-          variant="outline"
+          variant="ghost"
           className="flex-1 border-white/30 text-white hover:bg-white/10"
         >
           Later

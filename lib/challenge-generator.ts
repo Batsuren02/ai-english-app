@@ -50,6 +50,20 @@ export async function getDailyChallenge(): Promise<DailyChallenge> {
     .select()
     .single()
 
+  if (!data) {
+    // Fallback if insert failed — return a sensible default
+    return {
+      id: '',
+      date: today,
+      challenge_type: challenge.challenge_type,
+      target_count: challenge.target_count,
+      progress: 0,
+      completed: false,
+      reward_xp: challenge.reward_xp,
+      description: '',
+      icon: '⚡',
+    }
+  }
   return formatChallenge(data)
 }
 
@@ -99,7 +113,9 @@ function generateNewChallenge(): Omit<DailyChallenge, 'id' | 'date' | 'progress'
  * Format challenge with description and icon
  */
 function formatChallenge(data: any): DailyChallenge {
-  const descriptions = {
+  const challengeType = data.challenge_type as ChallengeType
+  
+  const descriptions: Record<ChallengeType, string> = {
     flashcard_sprint:
       'Review 10 words using flashcards. Speed and accuracy matter!',
     perfect_streak: 'Get 5 correct answers in a row. No mistakes allowed!',
@@ -108,7 +124,7 @@ function formatChallenge(data: any): DailyChallenge {
     new_words: 'Learn 5 new words and add them to your deck.',
   }
 
-  const icons = {
+  const icons: Record<ChallengeType, string> = {
     flashcard_sprint: '⚡',
     perfect_streak: '🔥',
     category_blitz: '🎯',
@@ -118,13 +134,13 @@ function formatChallenge(data: any): DailyChallenge {
   return {
     id: data.id,
     date: data.date,
-    challenge_type: data.challenge_type,
+    challenge_type: challengeType,
     target_count: data.target_count,
     progress: data.progress || 0,
     completed: data.completed || false,
     reward_xp: data.reward_xp,
-    description: descriptions[data.challenge_type],
-    icon: icons[data.challenge_type],
+    description: descriptions[challengeType],
+    icon: icons[challengeType],
   }
 }
 

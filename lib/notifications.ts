@@ -77,11 +77,10 @@ export function isInQuietHours(config: NotificationConfig, nowHour?: number): bo
   const currentHour = nowHour ?? new Date().getHours()
 
   if (config.quietHoursStart < config.quietHoursEnd) {
-    // Normal case: e.g., 22:00 (10pm) to 7:00 (7am) doesn't wrap
-    // Actually, if start > end, it wraps around midnight
-    return currentHour >= config.quietHoursStart || currentHour < config.quietHoursEnd
+    // Normal range (no midnight wrap), e.g., 8am–8pm
+    return currentHour >= config.quietHoursStart && currentHour < config.quietHoursEnd
   } else {
-    // Wrapped case: e.g., 22:00 to 7:00 wraps around midnight
+    // Wrapped around midnight, e.g., 10pm–7am
     return currentHour >= config.quietHoursStart || currentHour < config.quietHoursEnd
   }
 }
@@ -160,7 +159,7 @@ export function loadNotificationConfig(): NotificationConfig {
     if (saved) {
       const parsed = JSON.parse(saved)
       return {
-        enabled: saved.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
+        enabled: parsed.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
         scheduledHour: parsed.scheduledHour ?? DEFAULT_NOTIFICATION_CONFIG.scheduledHour,
         quietHoursStart: parsed.quietHoursStart ?? DEFAULT_NOTIFICATION_CONFIG.quietHoursStart,
         quietHoursEnd: parsed.quietHoursEnd ?? DEFAULT_NOTIFICATION_CONFIG.quietHoursEnd,

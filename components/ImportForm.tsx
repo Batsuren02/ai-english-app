@@ -120,7 +120,7 @@ export default function ImportForm({ onImportComplete }: ImportFormProps) {
         </p>
         <Button
           onClick={handleDownloadTemplate}
-          variant="outline"
+          variant="ghost"
           size="sm"
           className="gap-2"
         >

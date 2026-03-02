@@ -238,7 +238,7 @@ export default function ReadingPage() {
                 setUnknownWords([])
                 setSessionsAdded([])
               }}
-              variant="outline"
+              variant="ghost"
               className="flex-1"
             >
               Load New Text
