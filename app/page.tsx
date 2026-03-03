@@ -5,10 +5,12 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word, Review } from '@/lib/supabase'
 import Link from 'next/link'
-import { Brain, BookMarked, Flame, TrendingUp, Zap, ChevronRight, AlertTriangle, FileText, Mic2 } from 'lucide-react'
+import { Brain, BookMarked, Flame, TrendingUp, Zap, ChevronRight, AlertTriangle } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
 import StatCard from '@/components/design/StatCard'
 import SurfaceCard from '@/components/design/SurfaceCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
+import EmptyState from '@/components/design/EmptyState'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 export default function Dashboard() {
@@ -74,155 +76,179 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="fade-in">
+    <div className="fade-in space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <TextPrimary className="text-3xl font-bold mb-1">Good day! 👋</TextPrimary>
-        <TextSecondary className="text-base">
+      <div>
+        <h1 className="h2 text-[var(--text)] mb-2">Good day! 👋</h1>
+        <p className="body text-[var(--text-secondary)]">
           {dueCount > 0 ? `You have ${dueCount} words to review today.` : 'All caught up! Great work.'}
-        </TextSecondary>
+        </p>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard icon={<Brain size={24} />} label="Due Today" value={dueCount} color={dueCount > 0 ? 'var(--accent)' : 'var(--success)'} />
-        <StatCard icon={<BookMarked size={24} />} label="Total Words" value={totalWords} color="var(--accent)" />
-        <StatCard icon={<Flame size={24} />} label="Streak" value={`${profile?.current_streak || 0}d`} color="#dc2626" />
+      {/* KPI Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          icon={<Brain size={28} className="text-[var(--accent)]" />}
+          label="Due Today"
+          value={dueCount}
+          color={dueCount > 0 ? 'var(--accent)' : 'var(--success)'}
+          trend={dueCount > 0 ? { direction: 'up', percent: 5 } : undefined}
+        />
+        <StatCard
+          icon={<BookMarked size={28} className="text-[var(--accent)]" />}
+          label="Total Words"
+          value={totalWords}
+          color="var(--accent)"
+          animated
+        />
+        <StatCard
+          icon={<Flame size={28} className="text-red-600" />}
+          label="Streak"
+          value={`${profile?.current_streak || 0}d`}
+          color="#dc2626"
+          trend={profile?.current_streak ? { direction: 'up', percent: 10 } : undefined}
+        />
       </div>
 
       {/* Daily Challenge */}
-      <div className="mb-8">
-        <DailyChallengeCard />
-      </div>
+      <DailyChallengeCard />
 
       {/* Quick Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 32 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {dueCount > 0 && (
           <Link href="/learn" className="no-underline">
-            <SurfaceCard hover className="bg-[var(--accent)] text-white flex items-center justify-between cursor-pointer">
+            <SurfaceCard
+              hover
+              gradient
+              elevation="md"
+              className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent)]/80 text-white flex items-center justify-between cursor-pointer min-h-28"
+            >
               <div>
-                <TextPrimary className="font-bold text-base mb-0.5">Start Review</TextPrimary>
-                <TextSecondary className="text-xs opacity-85">{dueCount} words due</TextSecondary>
+                <h4 className="font-bold text-base mb-1 text-white">Start Review</h4>
+                <p className="text-sm opacity-85">{dueCount} words due</p>
               </div>
-              <ChevronRight size={20} />
+              <ChevronRight size={24} />
             </SurfaceCard>
           </Link>
         )}
         <Link href="/words" className="no-underline">
-          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
+          <SurfaceCard hover elevation="sm" className="flex items-center justify-between cursor-pointer min-h-24">
             <div>
-              <TextPrimary className="font-bold text-sm mb-0.5">Add Word</TextPrimary>
-              <TextSecondary className="text-xs">Paste from Claude</TextSecondary>
+              <h4 className="font-semibold text-sm mb-1">Add Word</h4>
+              <p className="text-xs text-[var(--text-secondary)]">Paste from Claude</p>
             </div>
             <ChevronRight size={18} />
           </SurfaceCard>
         </Link>
         <Link href="/quiz" className="no-underline">
-          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
+          <SurfaceCard hover elevation="sm" className="flex items-center justify-between cursor-pointer min-h-24">
             <div>
-              <TextPrimary className="font-bold text-sm mb-0.5">Practice Quiz</TextPrimary>
-              <TextSecondary className="text-xs">6 quiz types</TextSecondary>
+              <h4 className="font-semibold text-sm mb-1">Practice Quiz</h4>
+              <p className="text-xs text-[var(--text-secondary)]">6 quiz types</p>
             </div>
             <ChevronRight size={18} />
           </SurfaceCard>
         </Link>
         <Link href="/reading" className="no-underline">
-          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
+          <SurfaceCard hover elevation="sm" className="flex items-center justify-between cursor-pointer min-h-24">
             <div>
-              <TextPrimary className="font-bold text-sm mb-0.5">Reading</TextPrimary>
-              <TextSecondary className="text-xs">Learn from text</TextSecondary>
+              <h4 className="font-semibold text-sm mb-1">Reading</h4>
+              <p className="text-xs text-[var(--text-secondary)]">Learn from text</p>
             </div>
             <ChevronRight size={18} />
           </SurfaceCard>
         </Link>
         <Link href="/pronunciation" className="no-underline">
-          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
+          <SurfaceCard hover elevation="sm" className="flex items-center justify-between cursor-pointer min-h-24">
             <div>
-              <TextPrimary className="font-bold text-sm mb-0.5">Pronunciation</TextPrimary>
-              <TextSecondary className="text-xs">Practice speaking</TextSecondary>
+              <h4 className="font-semibold text-sm mb-1">Pronunciation</h4>
+              <p className="text-xs text-[var(--text-secondary)]">Practice speaking</p>
             </div>
             <ChevronRight size={18} />
           </SurfaceCard>
         </Link>
       </div>
 
-      {/* Activity chart */}
-      <SurfaceCard padding="md" className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={16} className="text-[var(--accent)]" />
-          <TextPrimary className="text-sm font-semibold">7-Day Activity</TextPrimary>
+      {/* Activity Chart */}
+      <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp size={18} className="text-[var(--accent)]" />
+          <h3 className="h4 text-[var(--text)]">7-Day Activity</h3>
         </div>
-        <div className="flex gap-2 items-end h-20">
+        <div className="flex gap-3 items-end h-24 px-2">
           {recentActivity.map(({ date, count }) => {
             const maxC = Math.max(...recentActivity.map(r => r.count), 1)
-            const h = count ? (count / maxC) * 64 + 4 : 4
+            const h = count ? (count / maxC) * 80 + 4 : 4
             return (
-              <div key={date} className="flex-1 flex flex-col items-center gap-1">
+              <div key={date} className="flex-1 flex flex-col items-center gap-2">
                 <div
-                  className="w-full rounded transition-all duration-300"
+                  className="w-full rounded-t-lg transition-all duration-300 bg-gradient-to-t from-[var(--accent)] to-[var(--accent)]/60"
                   style={{
                     height: `${h}px`,
-                    background: count ? 'var(--accent)' : 'var(--border)',
+                    background: count ? 'var(--gradient-accent-soft)' : 'var(--border)',
                   }}
                   title={`${count} reviews`}
                 />
-                <span className="text-[10px] text-[var(--text-secondary)]">{date}</span>
+                <span className="text-[11px] text-[var(--text-secondary)] font-medium">{date}</span>
               </div>
             )
           })}
         </div>
       </SurfaceCard>
 
-      {/* Phase 4 Features Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div>
-          <StatCard
-            icon={<span className="text-3xl">📖</span>}
-            label="Reading Sessions"
-            value={readingSessions}
-            color="var(--accent)"
-          />
-        </div>
-        <div>
-          <StatCard
-            icon={<span className="text-3xl">🎤</span>}
-            label="Pronunciations"
-            value={pronunciationAttempts}
-            color="var(--accent)"
-          />
-        </div>
+      {/* Feature Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <StatCard
+          icon={<span className="text-3xl">📖</span>}
+          label="Reading Sessions"
+          value={readingSessions}
+          color="var(--accent)"
+          animated
+        />
+        <StatCard
+          icon={<span className="text-3xl">🎤</span>}
+          label="Pronunciations"
+          value={pronunciationAttempts}
+          color="var(--accent)"
+          animated
+        />
       </div>
 
-      {/* Weak words */}
+      {/* Weak Words */}
       {weakWords.length > 0 && (
-        <SurfaceCard padding="md">
+        <SurfaceCard padding="lg">
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-yellow-500" />
-            <TextPrimary className="text-sm font-semibold">Words Needing Attention</TextPrimary>
+            <AlertTriangle size={18} className="text-amber-500" />
+            <h3 className="h4 text-[var(--text)]">Words Needing Attention</h3>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {weakWords.map((w: any) => (
-              <div key={w.id} className="flex justify-between items-center">
-                <div>
-                  <TextPrimary className="font-semibold">{w.word}</TextPrimary>
-                  <TextSecondary className="text-xs ml-2">{w.definition?.slice(0, 50)}...</TextSecondary>
+              <div key={w.id} className="flex justify-between items-start gap-3 pb-3 border-b border-[var(--border)] last:border-0">
+                <div className="flex-1">
+                  <p className="font-semibold text-[var(--text)]">{w.word}</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">{w.definition?.slice(0, 60)}...</p>
                 </div>
-                <span className="text-xs font-semibold text-red-600">EF: {w.ease_factor}</span>
+                <span className="text-xs font-semibold text-amber-600 whitespace-nowrap">EF: {w.ease_factor.toFixed(1)}</span>
               </div>
             ))}
           </div>
         </SurfaceCard>
       )}
 
+      {/* Empty State */}
       {totalWords === 0 && (
-        <SurfaceCard padding="lg" className="text-center mt-6">
-          <div className="flex justify-center mb-3">
-            <Zap size={40} className="text-[var(--accent)]" />
-          </div>
-          <TextPrimary className="text-lg font-bold mb-2">Start your journey!</TextPrimary>
-          <TextSecondary className="text-sm mb-4">Add your first words to get started.</TextSecondary>
-          <Link href="/words"><button className="btn-primary">Add Words</button></Link>
-        </SurfaceCard>
+        <EmptyState
+          icon={<Zap size={56} className="text-[var(--accent)]" />}
+          title="Start your learning journey!"
+          description="Add your first words to begin building your vocabulary with spaced repetition."
+          action={
+            <Link href="/words">
+              <InteractiveButton variant="primary" size="md">
+                Add Your First Words
+              </InteractiveButton>
+            </Link>
+          }
+        />
       )}
     </div>
   )
