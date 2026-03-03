@@ -320,8 +320,11 @@ export default function LearnPage() {
         </div>
         <div className="w-full h-3 bg-[var(--border)] rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/50 rounded-full transition-all duration-300"
-            style={{ width: `${progressPercent}%` }}
+            className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/50 rounded-full"
+            style={{
+              width: `${progressPercent}%`,
+              transition: 'width 800ms cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
           />
         </div>
       </div>
@@ -340,18 +343,25 @@ export default function LearnPage() {
           swipeStartX.current = null
           isSwiping.current = false
         }}
-        className={`relative w-full h-[500px] cursor-grab active:cursor-grabbing transition-all duration-300 rounded-2xl select-none ${
-          swipeState === 'left' ? '-translate-x-full opacity-0' : swipeState === 'right' ? 'translate-x-full opacity-0' : ''
+        className={`relative w-full h-[500px] cursor-grab active:cursor-grabbing rounded-2xl select-none ${
+          swipeState === 'left' ? '-translate-x-96 opacity-50' : swipeState === 'right' ? 'translate-x-96 opacity-50' : 'translate-x-0 opacity-100'
         }`}
-        style={{ perspective: '1000px', touchAction: 'none', userSelect: 'none' }}
+        style={{
+          perspective: '1000px',
+          touchAction: 'none',
+          userSelect: 'none',
+          transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+        }}
       >
         {/* Card Flip Container */}
         <div
-          className="relative w-full h-full transition-transform duration-500 select-none"
+          className="relative w-full h-full select-none"
           style={{
             transformStyle: 'preserve-3d',
             transform: showDetails ? 'rotateY(180deg)' : 'rotateY(0deg)',
             touchAction: 'none',
+            transition: 'transform 700ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+            cursor: 'pointer'
           }}
           onClick={() => setShowDetails(!showDetails)}
         >
@@ -393,12 +403,26 @@ export default function LearnPage() {
           <div className="space-y-4 mt-auto pt-6 border-t border-[var(--border)]">
             {/* Visual Swipe Indicators */}
             <div className="flex justify-between items-center px-4">
-              <div className={`flex items-center gap-2 transition-all duration-150 ${swipeState === 'left' ? 'opacity-100 text-red-500' : 'opacity-50 text-[var(--text-secondary)]'}`}>
+              <div
+                className={`flex items-center gap-2 ${swipeState === 'left' ? 'text-red-500' : 'text-[var(--text-secondary)]'}`}
+                style={{
+                  transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  opacity: swipeState === 'left' ? 1 : 0.5,
+                  transform: swipeState === 'left' ? 'translateX(-4px)' : 'translateX(0)'
+                }}
+              >
                 <XCircle size={24} />
                 <span className="font-semibold text-sm">Not Yet</span>
               </div>
               <div className="text-xs text-[var(--text-secondary)] font-medium">Swipe to rate</div>
-              <div className={`flex items-center gap-2 transition-all duration-150 ${swipeState === 'right' ? 'opacity-100 text-green-500' : 'opacity-50 text-[var(--text-secondary)]'}`}>
+              <div
+                className={`flex items-center gap-2 ${swipeState === 'right' ? 'text-green-500' : 'text-[var(--text-secondary)]'}`}
+                style={{
+                  transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  opacity: swipeState === 'right' ? 1 : 0.5,
+                  transform: swipeState === 'right' ? 'translateX(4px)' : 'translateX(0)'
+                }}
+              >
                 <span className="font-semibold text-sm">Got It!</span>
                 <CheckCircle size={24} />
               </div>
