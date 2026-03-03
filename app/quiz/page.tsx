@@ -12,6 +12,9 @@ import {
 } from '@/lib/quiz-generator'
 import { pickInterleavedWord, parseInterleaveConfig } from '@/lib/interleaving'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap } from 'lucide-react'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import StatCard from '@/components/design/StatCard'
+import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
   mcq:         { label: 'Multiple Choice', icon: '🔤', desc: 'Choose the correct word from 4 options', color: '#2563eb' },
@@ -197,12 +200,12 @@ export default function QuizPage() {
   }
 
   // --- RENDER ---
-  if (loading) return <div style={{ color: 'var(--ink-light)', padding: 40 }}>Loading quiz data...</div>
+  if (loading) return <div className="py-10"><TextSecondary>Loading quiz data...</TextSecondary></div>
 
   if (words.length < 4) return (
-    <div style={{ textAlign: 'center', padding: 60, color: 'var(--ink-light)' }}>
-      <p style={{ marginBottom: 12, fontSize: 18 }}>You need at least 4 words to start quizzing.</p>
-      <a href="/words" style={{ color: 'var(--accent)', fontWeight: 600 }}>Add Words →</a>
+    <div className="text-center py-16">
+      <TextPrimary className="text-lg mb-3 block">You need at least 4 words to start quizzing.</TextPrimary>
+      <a href="/words" className="text-[var(--accent)] font-semibold">Add Words →</a>
     </div>
   )
 
@@ -214,11 +217,13 @@ export default function QuizPage() {
     const avgTime = Math.round(results.reduce((a, r) => a + r.timeMs, 0) / results.length / 1000)
 
     return (
-      <div className="fade-in" style={{ maxWidth: 560, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Award size={52} style={{ color: 'var(--accent)', margin: '0 auto 12px' }} />
-          <h2 style={{ fontSize: 30, marginBottom: 4 }}>Session Complete!</h2>
-          <p style={{ color: 'var(--ink-light)' }}>Here's how you did</p>
+      <div className="fade-in max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-3">
+            <Award size={52} className="text-[var(--accent)]" />
+          </div>
+          <TextPrimary className="text-3xl font-bold mb-1">Session Complete!</TextPrimary>
+          <TextSecondary className="text-sm">Here's how you did</TextSecondary>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
@@ -227,52 +232,52 @@ export default function QuizPage() {
             { label: 'Accuracy', value: `${accuracy}%`, color: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626' },
             { label: 'Avg Time', value: `${avgTime}s`, color: '#2563eb' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="card" style={{ padding: '18px', textAlign: 'center' }}>
+            <SurfaceCard key={label} padding="md" className="text-center">
               <div style={{ fontSize: 26, fontFamily: 'var(--font-display)', fontWeight: 700, color }}>{value}</div>
-              <div style={{ fontSize: 12, color: 'var(--ink-light)' }}>{label}</div>
-            </div>
+              <TextSecondary className="text-xs">{label}</TextSecondary>
+            </SurfaceCard>
           ))}
         </div>
 
         {/* By quiz type */}
-        <div className="card" style={{ padding: '18px', marginBottom: 20 }}>
-          <h3 style={{ fontSize: 15, marginBottom: 12 }}>Accuracy by Type</h3>
+        <SurfaceCard padding="md" className="mb-5">
+          <TextPrimary className="text-sm font-semibold mb-3">Accuracy by Type</TextPrimary>
           {Object.entries(byType).map(([type, { correct, total }]) => {
             const pct = Math.round(correct / total * 100)
             const meta = QUIZ_META[type]
             return (
-              <div key={type} style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span>{meta?.icon} {meta?.label}</span>
-                  <span style={{ fontWeight: 600, color: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626' }}>{pct}%</span>
+              <div key={type} className="mb-2.5">
+                <div className="flex justify-between text-xs mb-1">
+                  <TextPrimary className="text-xs">{meta?.icon} {meta?.label}</TextPrimary>
+                  <span className="font-semibold" style={{ color: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626' }}>{pct}%</span>
                 </div>
-                <div style={{ background: 'var(--border)', borderRadius: 3, height: 6 }}>
-                  <div style={{ background: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626', width: `${pct}%`, height: 6, borderRadius: 3, transition: 'width 0.5s' }} />
+                <div className="w-full h-1.5 bg-[var(--border)] rounded overflow-hidden">
+                  <div className="h-full rounded transition-all duration-500" style={{ background: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626', width: `${pct}%` }} />
                 </div>
               </div>
             )
           })}
-        </div>
+        </SurfaceCard>
 
         {/* Wrong words */}
         {results.filter(r => !r.correct).length > 0 && (
-          <div className="card" style={{ padding: '18px', marginBottom: 20 }}>
-            <h3 style={{ fontSize: 15, marginBottom: 10 }}>Review These Words</h3>
+          <SurfaceCard padding="md" className="mb-5">
+            <TextPrimary className="text-sm font-semibold mb-2.5">Review These Words</TextPrimary>
             {results.filter(r => !r.correct).map((r, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                <XCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontWeight: 600 }}>{r.word.word}</span>
-                <span style={{ fontSize: 13, color: 'var(--ink-light)' }}>{r.word.definition?.slice(0, 50)}</span>
+              <div key={i} className="flex gap-2 items-baseline py-1.5 border-b border-[var(--border)]">
+                <XCircle size={14} className="text-red-600 flex-shrink-0 mt-0.5" />
+                <TextPrimary className="font-semibold text-sm">{r.word.word}</TextPrimary>
+                <TextSecondary className="text-xs line-clamp-1">{r.word.definition?.slice(0, 50)}</TextSecondary>
               </div>
             ))}
-          </div>
+          </SurfaceCard>
         )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-primary" onClick={() => startMode(mode!)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <div className="flex gap-2.5">
+          <button className="btn-primary flex-1 flex items-center justify-center gap-1.5" onClick={() => startMode(mode!)}>
             <RotateCcw size={15} /> Play Again
           </button>
-          <button className="btn-ghost" onClick={() => setMode(null)} style={{ flex: 1 }}>Change Mode</button>
+          <button className="btn-ghost flex-1" onClick={() => setMode(null)}>Change Mode</button>
         </div>
       </div>
     )
@@ -281,19 +286,19 @@ export default function QuizPage() {
   // MODE SELECT
   if (!mode) return (
     <div className="fade-in">
-      <h2 style={{ fontSize: 26, marginBottom: 4 }}>Quiz Mode</h2>
-      <p style={{ color: 'var(--ink-light)', marginBottom: 24 }}>Choose how you want to practice — {sessionLength} questions per session</p>
+      <TextPrimary className="text-3xl font-bold mb-1">Quiz Mode</TextPrimary>
+      <TextSecondary className="text-sm mb-6">Choose how you want to practice — {sessionLength} questions per session</TextSecondary>
 
       {/* Auto mode */}
-      <div onClick={() => startMode('auto')} className="card" style={{ padding: '20px 24px', marginBottom: 16, cursor: 'pointer', background: 'linear-gradient(135deg, #d97706, #b45309)', border: 'none', color: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div onClick={() => startMode('auto')} className="bg-gradient-to-br from-amber-600 to-amber-700 rounded-lg p-5 mb-4 cursor-pointer text-white hover:shadow-lg transition-shadow">
+        <div className="flex items-center justify-between">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <div className="flex items-center gap-2 mb-1">
               <Shuffle size={18} />
-              <span style={{ fontWeight: 700, fontSize: 18 }}>Smart Mix</span>
-              <span style={{ background: 'rgba(255,255,255,0.25)', fontSize: 11, padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>RECOMMENDED</span>
+              <span className="font-bold text-lg">Smart Mix</span>
+              <span className="bg-white/25 text-xs px-2 py-0.5 rounded-full font-semibold">RECOMMENDED</span>
             </div>
-            <p style={{ opacity: 0.9, fontSize: 14 }}>Auto-weighted: boosts your weakest quiz types and hardest words</p>
+            <p className="opacity-90 text-sm">Auto-weighted: boosts your weakest quiz types and hardest words</p>
           </div>
           <ChevronRight size={20} />
         </div>
