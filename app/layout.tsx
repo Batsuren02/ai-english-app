@@ -2,14 +2,16 @@
 import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
-import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Moon, Sun, Menu, Upload, FileText, Mic2, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Menu, Upload, FileText, Mic2, Zap } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import PWAInstallPrompt from '@/components/PWAInstallPrompt'
 import XPPopup from '@/components/XPPopup'
 import { ToastProvider } from '@/components/ToastProvider'
+import { ThemeProvider } from '@/lib/theme-context'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 const NAV = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
@@ -38,7 +40,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
               'flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm transition-all',
               active
                 ? 'bg-[var(--accent)] text-white font-semibold'
-                : 'text-[var(--ink-light)] hover:bg-[var(--border)] hover:text-[var(--ink)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text)]'
             )}
           >
             <Icon size={16} />
@@ -55,66 +57,33 @@ function SidebarHeader() {
     <div className="px-5 pb-5 mb-2 border-b border-[var(--border)]">
       <h1 className="font-display text-xl text-[var(--accent)] leading-snug">
         English<br />
-        <span className="text-[var(--ink)] text-sm font-normal font-body">Learning App</span>
+        <span className="text-[var(--text)] text-sm font-normal font-body">Learning App</span>
       </h1>
     </div>
   )
 }
 
-function RootLayoutContent({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [dark, setDark] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  useEffect(() => {
-    const saved = localStorage.getItem('theme')
-    if (saved === 'dark') { setDark(true); document.documentElement.classList.add('dark') }
-  }, [])
-
-  const toggleDark = () => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('theme', next ? 'dark' : 'light')
-  }
-
-  const DarkToggle = () => (
-    <button
-      onClick={toggleDark}
-      className="flex items-center gap-2 text-xs text-[var(--ink-light)] hover:text-[var(--ink)] transition-colors p-1 rounded"
-    >
-      {dark ? <Sun size={13} /> : <Moon size={13} />}
-      {dark ? 'Light mode' : 'Dark mode'}
-    </button>
-  )
-
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <title>English Learning App</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#0f3460" />
-        <meta name="description" content="Spaced repetition vocabulary app for English learners" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-      </head>
-      <body>
-        <ToastProvider>
-        <div className="flex min-h-screen bg-[var(--bg)]">
+    <ToastProvider>
+      <div className="flex min-h-screen bg-[var(--bg)]">
 
           {/* ─── Desktop sidebar (md+) ─────────────────────────────── */}
           <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-[220px] z-40
-                            bg-[var(--bg-card)] border-r border-[var(--border)] pt-6 pb-4">
+                            bg-[var(--surface)] border-r border-[var(--border)] pt-6 pb-4">
             <SidebarHeader />
             <NavLinks pathname={pathname} />
             <div className="px-5 pt-3 border-t border-[var(--border)] mt-2">
-              <DarkToggle />
+              <ThemeSwitcher />
             </div>
           </aside>
 
           {/* ─── Mobile top bar + Sheet drawer (below md) ──────────── */}
           <header className="md:hidden fixed top-0 inset-x-0 z-50 h-14 flex items-center justify-between
-                             px-4 bg-[var(--bg-card)] border-b border-[var(--border)]">
+                             px-4 bg-[var(--surface)] border-b border-[var(--border)]">
             <span className="font-display font-bold text-[var(--accent)] text-lg">EnglishApp</span>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -127,7 +96,7 @@ function RootLayoutContent({ children }: { children: React.ReactNode }) {
                 <SidebarHeader />
                 <NavLinks pathname={pathname} onNavigate={() => setSheetOpen(false)} />
                 <div className="px-5 pt-3 mt-2 border-t border-[var(--border)]">
-                  <DarkToggle />
+                  <ThemeSwitcher />
                 </div>
               </SheetContent>
             </Sheet>
@@ -143,17 +112,31 @@ function RootLayoutContent({ children }: { children: React.ReactNode }) {
 
         </div>
 
-        {/* PWA Install Prompt */}
-        <PWAInstallPrompt />
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
 
-        {/* XP Popup Notifications */}
-        <XPPopup />
-        </ToastProvider>
-      </body>
-    </html>
+      {/* XP Popup Notifications */}
+      <XPPopup />
+    </ToastProvider>
   )
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <RootLayoutContent>{children}</RootLayoutContent>
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>English Learning App</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0f3460" />
+        <meta name="description" content="Spaced repetition vocabulary app for English learners" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
+      <body>
+        <ThemeProvider>
+          <LayoutInner>{children}</LayoutInner>
+        </ThemeProvider>
+      </body>
+    </html>
+  )
 }

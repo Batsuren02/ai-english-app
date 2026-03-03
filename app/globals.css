@@ -5,47 +5,149 @@
 @tailwind utilities;
 
 :root {
+  /* Fonts */
   --font-display: 'Playfair Display', serif;
   --font-body: 'Source Serif 4', serif;
+  --font-monospace: 'Menlo', 'Courier New', monospace;
+
+  /* Light Theme (Default) */
   --bg: #f5f4ef;
-  --bg-card: #faf9f5;
-  --ink: #2c2820;
-  --ink-light: #7d7560;
+  --bg-secondary: #f0efe8;
+  --surface: #faf9f5;
+  --surface-hover: #f0efe8;
+  --text: #2c2820;
+  --text-secondary: #7d7560;
   --accent: #d97706;
   --accent-light: #fde68a;
   --border: #d4d0c0;
+  --border-light: #e5e1d0;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #f59e0b;
+  --shadow: rgba(0, 0, 0, 0.1);
+
+  /* Legacy aliases for backward compatibility */
+  --bg-card: var(--surface);
+  --ink: var(--text);
+  --ink-light: var(--text-secondary);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
 }
 
+/* Dark Theme */
 .dark {
   --bg: #1a1710;
-  --bg-card: #22201a;
-  --ink: #e8e6dc;
-  --ink-light: #9a9278;
+  --bg-secondary: #22201a;
+  --surface: #22201a;
+  --surface-hover: #2d2a23;
+  --text: #e8e6dc;
+  --text-secondary: #9a9278;
   --accent: #f59e0b;
   --accent-light: #78350f;
   --border: #3d3930;
+  --border-light: #4d4940;
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #eab308;
+  --shadow: rgba(0, 0, 0, 0.4);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+}
 
-body {
+html, body {
   background: var(--bg);
-  color: var(--ink);
+  color: var(--text);
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.6;
-  transition: background 0.3s, color 0.3s;
+  height: 100%;
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
+  color: var(--text);
 }
 
+/* ─── Theme-Aware Cards & Surfaces ─── */
 .card {
-  background: var(--bg-card);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px var(--shadow);
+  padding: 16px;
+}
+
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.surface-hover:hover {
+  background: var(--surface-hover);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+/* ─── Text Hierarchy ─── */
+.text-primary {
+  color: var(--text);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.text-warning {
+  color: var(--warning);
+}
+
+/* ─── Interactive States ─── */
+.interactive {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.interactive-text:hover {
+  opacity: 0.8;
+  color: var(--accent);
+}
+
+.interactive-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 16px var(--shadow);
+}
+
+/* ─── Shadow Depth System ─── */
+.depth-1 {
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.depth-2 {
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.depth-3 {
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .btn-primary {

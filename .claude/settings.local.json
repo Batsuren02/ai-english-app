@@ -15,7 +15,14 @@
       "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064138_phase4_003_pronunciation_table.sql\":*)",
       "Bash(npx supabase migration new phase4_004_notifications_table)",
       "Bash(\"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\supabase\\\\migrations\\\\20260302064151_phase4_004_notifications_table.sql\":*)",
-      "Bash(git push origin main)"
+      "Bash(git push origin main)",
+      "Bash(npm run build)",
+      "Bash(npm install --save-dev @types/papaparse)",
+      "Bash(git add app/drills/page.tsx app/import/page.tsx lib/speech-utils.ts next.config.js package.json package-lock.json tsconfig.json)",
+      "Bash(git add app/)",
+      "Bash(git add lib/supabase.ts)",
+      "Bash(ls -la /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/.env*)",
+      "Bash(git add .)"
     ]
   }
 }
