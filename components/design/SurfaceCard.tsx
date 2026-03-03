@@ -7,6 +7,10 @@ interface SurfaceCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean
   depth?: 1 | 2 | 3
   padding?: 'sm' | 'md' | 'lg'
+  gradient?: boolean
+  glow?: boolean
+  elevation?: 'sm' | 'md' | 'lg'
+  cornerBadge?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -18,6 +22,10 @@ export function SurfaceCard({
   hover = true,
   depth = 1,
   padding = 'md',
+  gradient = false,
+  glow = false,
+  elevation = 'sm',
+  cornerBadge,
   className,
   children,
   ...props
@@ -34,20 +42,36 @@ export function SurfaceCard({
     3: 'depth-3',
   }[depth]
 
+  const elevationHoverClass = hover ? {
+    sm: 'hover:shadow-lg hover:scale-105 hover:translate-y-[-2px]',
+    md: 'hover:shadow-xl hover:scale-105 hover:translate-y-[-4px]',
+    lg: 'hover:shadow-2xl hover:scale-110 hover:translate-y-[-6px]',
+  }[elevation] : ''
+
   const hoverClass = hover ? 'surface-hover' : ''
+  const gradientClass = gradient ? 'gradient-accent' : ''
+  const glowClass = glow ? 'glow' : ''
 
   return (
     <div
       className={cn(
-        'surface rounded-lg border border-[var(--border)]',
+        'surface rounded-lg border border-[var(--border)] relative transition-all duration-300',
         paddingClass,
         depthClass,
         hoverClass,
+        elevationHoverClass,
+        gradientClass,
+        glowClass,
         className
       )}
       {...props}
     >
       {children}
+      {cornerBadge && (
+        <div className="absolute -top-3 -right-3">
+          {cornerBadge}
+        </div>
+      )}
     </div>
   )
 }
