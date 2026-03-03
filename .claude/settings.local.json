@@ -38,7 +38,8 @@
       "Bash(git add app/globals.css)",
       "Bash(git add components/design/FormInput.tsx)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(netstat -tuln)"
+      "Bash(netstat -tuln)",
+      "Bash(lsof -i :3000)"
     ]
   }
 }
