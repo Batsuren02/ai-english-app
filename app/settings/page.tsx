@@ -10,6 +10,8 @@ export default function SettingsPage() {
     cefr_level: 'B1', goal: 'general', daily_target_minutes: 20
   })
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
   const [singleWord, setSingleWord] = useState('')
   const [batchWords, setBatchWords] = useState('')
@@ -21,9 +23,25 @@ export default function SettingsPage() {
   }, [])
 
   async function save() {
-    await supabase.from('user_profile').update({ ...profile, updated_at: new Date().toISOString() }).eq('id', (profile as any).id)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setLoading(true)
+    setError(null)
+    try {
+      const { error: updateError } = await supabase
+        .from('user_profile')
+        .update({ ...profile, updated_at: new Date().toISOString() })
+        .eq('id', (profile as any).id)
+
+      if (updateError) {
+        setError(`Failed to save settings: ${updateError.message}`)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } catch (err) {
+      setError(`Error saving settings: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function copyPrompt(text: string, key: string) {
@@ -66,6 +84,13 @@ export default function SettingsPage() {
       <h2 style={{ fontSize: 26, marginBottom: 6 }}>Settings</h2>
       <p style={{ color: 'var(--ink-light)', marginBottom: 28 }}>Personalize your learning experience</p>
 
+      {/* Error message */}
+      {error && (
+        <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#991b1b', fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
       {/* Profile settings */}
       <div className="card" style={{ padding: '24px', marginBottom: 24 }}>
         <h3 style={{ fontSize: 18, marginBottom: 18 }}>Learning Profile</h3>
@@ -86,9 +111,9 @@ export default function SettingsPage() {
             <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Daily Target (minutes)</label>
             <input className="input" type="number" min={5} max={120} value={profile.daily_target_minutes} onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))} />
           </div>
-          <button className="btn-primary" onClick={save} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-            {saved ? <Check size={16} /> : <Save size={16} />}
-            {saved ? 'Saved!' : 'Save Settings'}
+          <button className="btn-primary" onClick={save} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: loading ? 0.6 : 1 }}>
+            {loading ? '...' : saved ? <Check size={16} /> : <Save size={16} />}
+            {loading ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
           </button>
         </div>
       </div>
@@ -129,9 +154,9 @@ export default function SettingsPage() {
             <p style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 6 }}>How strongly to avoid repeating the same word category. Higher = better variety.</p>
           </div>
 
-          <button className="btn-primary" onClick={save} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-            {saved ? <Check size={16} /> : <Save size={16} />}
-            {saved ? 'Saved!' : 'Save Settings'}
+          <button className="btn-primary" onClick={save} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: loading ? 0.6 : 1 }}>
+            {loading ? '...' : saved ? <Check size={16} /> : <Save size={16} />}
+            {loading ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
           </button>
         </div>
       </div>

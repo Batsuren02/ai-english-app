@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word, Review } from '@/lib/supabase'
 import Link from 'next/link'
-import { Brain, BookMarked, Flame, Star, TrendingUp, Zap, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Brain, BookMarked, Flame, Star, TrendingUp, Zap, ChevronRight, AlertTriangle, FileText, Mic2 } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
 
 export default function Dashboard() {
@@ -109,7 +109,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 32 }}>
         {dueCount > 0 && (
           <Link href="/learn" style={{ textDecoration: 'none' }}>
             <div style={{
@@ -139,6 +139,24 @@ export default function Dashboard() {
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Practice Quiz</div>
               <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>6 quiz types</div>
+            </div>
+            <ChevronRight size={18} color="var(--ink-light)" />
+          </div>
+        </Link>
+        <Link href="/reading" style={{ textDecoration: 'none' }}>
+          <div className="card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Reading</div>
+              <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>Learn from text</div>
+            </div>
+            <ChevronRight size={18} color="var(--ink-light)" />
+          </div>
+        </Link>
+        <Link href="/pronunciation" style={{ textDecoration: 'none' }}>
+          <div className="card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Pronunciation</div>
+              <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>Practice speaking</div>
             </div>
             <ChevronRight size={18} color="var(--ink-light)" />
           </div>

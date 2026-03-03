@@ -140,12 +140,12 @@ export default function QuizPage() {
     }
   }
 
-  function recordResult(correct: boolean) {
+  function recordResult(correct: boolean, answer: string) {
     const timeMs = Date.now() - startTimeRef.current
     const type = quiz!.type
     setScore(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
     setResults(prev => [...prev, { word: quiz!.word, type, correct, timeMs }])
-    supabase.from('review_logs').insert({ word_id: quiz!.word.id, quiz_type: type, result: correct ? 4 : 0, response_time_ms: timeMs, user_answer: userAnswer })
+    supabase.from('review_logs').insert({ word_id: quiz!.word.id, quiz_type: type, result: correct ? 4 : 0, response_time_ms: timeMs, user_answer: answer, source: 'quiz' })
   }
 
   function checkTextAnswer() {
@@ -154,7 +154,7 @@ export default function QuizPage() {
       ? userAnswer.toLowerCase().includes(quiz.answer.toLowerCase())
       : userAnswer.trim().toLowerCase() === quiz.answer.toLowerCase()
     setFeedback(correct ? 'correct' : 'wrong')
-    recordResult(correct)
+    recordResult(correct, userAnswer)
   }
 
   function selectMCQ(opt: string) {
@@ -162,7 +162,7 @@ export default function QuizPage() {
     const correct = opt === quiz?.answer
     setUserAnswer(opt)
     setFeedback(correct ? 'correct' : 'wrong')
-    recordResult(correct)
+    recordResult(correct, opt)
   }
 
   // Matching logic
@@ -184,7 +184,7 @@ export default function QuizPage() {
         if (Object.keys(newMatched).length === quiz?.pairs?.length) {
           setMatchDone(true)
           setFeedback('correct')
-          recordResult(true)
+          recordResult(true, JSON.stringify(newMatched))
         }
       } else {
         setMatchState(prev => prev ? { ...prev, wrong: [selected, item], selected: null } : prev)

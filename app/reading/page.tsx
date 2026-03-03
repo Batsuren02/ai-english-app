@@ -26,6 +26,7 @@ export default function ReadingPage() {
   const [unknownWords, setUnknownWords] = useState<string[]>([])
   const [sessionsAdded, setSessionsAdded] = useState<string[]>([])
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
 
@@ -66,10 +67,42 @@ export default function ReadingPage() {
       // Get unknown words
       const unknown = getUnknownWords(markedTokens)
 
+      // Create reading session
+      const { data: sessionData } = await supabase
+        .from('reading_sessions')
+        .insert({
+          text_content: textInput,
+          word_count: textInput.split(/\s+/).length,
+          unknown_count: unknown.length,
+          comprehension_level: comp.percentage,
+        })
+        .select()
+        .single()
+
+      if (sessionData) {
+        setSessionId(sessionData.id)
+
+        // Create reading_session_words entries for unknown words
+        const wordIds = unknown
+          .map(w => words.find(word => word.word.toLowerCase() === w.toLowerCase())?.id)
+          .filter(Boolean)
+
+        if (wordIds.length > 0) {
+          await supabase.from('reading_session_words').insert(
+            wordIds.map(wordId => ({
+              session_id: sessionData.id,
+              word_id: wordId,
+            }))
+          )
+        }
+      }
+
       setTokens(markedTokens)
       setComprehension(comp)
       setUnknownWords(unknown)
       setPhase('reading')
+    } catch (err) {
+      console.error('Failed to analyze text:', err)
     } finally {
       setAnalyzing(false)
     }

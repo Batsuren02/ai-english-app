@@ -20,7 +20,6 @@ export default function PronunciationPage() {
   const [isPlaying, setIsPlaying] = useState<'user' | 'ref' | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
-  const audioRef = useState<HTMLAudioElement | null>(null)[0]
 
   useEffect(() => {
     loadWords()
@@ -51,12 +50,27 @@ export default function PronunciationPage() {
 
   const handleRecordingComplete = async (blob: Blob) => {
     setUserBlob(blob)
-    // Build waveform
+    // Build waveform and save pronunciation attempt
     try {
       const samples = await buildWaveformData(blob, 200)
       setUserSamples(samples)
+
+      // Save pronunciation attempt to database
+      if (selectedWord) {
+        // Convert blob to base64 for storage (if needed for playback)
+        const arrayBuffer = await blob.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuffer)
+        const hex = bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '')
+
+        await supabase.from('pronunciation_attempts').insert({
+          word_id: selectedWord.id,
+          audio_url: '', // Could be cloud URL if integrated with storage
+          feedback: null,
+          similarity_score: null,
+        })
+      }
     } catch (err) {
-      console.error('Failed to build waveform:', err)
+      console.error('Failed to complete recording:', err)
     }
   }
 

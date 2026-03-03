@@ -3,6 +3,27 @@
  * Extracts words from text, handles punctuation, and matches against vocabulary.
  */
 
+// Common English stop words to filter out (100 most common)
+const STOP_WORDS = new Set([
+  'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and',
+  'any', 'are', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'below',
+  'between', 'both', 'but', 'by', 'can', 'could', 'did', 'do', 'does', 'doing',
+  'down', 'during', 'each', 'few', 'for', 'from', 'further', 'had', 'has', 'have',
+  'having', 'he', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his', 'how',
+  'i', 'if', 'in', 'into', 'is', 'it', 'its', 'itself', 'just', 'me', 'might',
+  'more', 'most', 'must', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on',
+  'once', 'only', 'or', 'other', 'our', 'ours', 'ourselves', 'out', 'over', 'own',
+  'same', 'she', 'should', 'so', 'some', 'such', 'than', 'that', 'the', 'their',
+  'theirs', 'them', 'themselves', 'then', 'there', 'these', 'they', 'this', 'those',
+  'through', 'to', 'too', 'under', 'until', 'up', 'very', 'was', 'we', 'were',
+  'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'why', 'with', 'you',
+  'your', 'yours', 'yourself', 'yourselves'
+])
+
+export function isStopWord(word: string): boolean {
+  return STOP_WORDS.has(word.toLowerCase())
+}
+
 export type Token = {
   word: string            // the actual word (lowercased)
   original: string        // original casing from text
@@ -121,8 +142,8 @@ export function buildHighlightedTokens(
 }
 
 /**
- * Get unknown words from tokens.
+ * Get unknown words from tokens, excluding stop words.
  */
 export function getUnknownWords(tokens: Token[]): string[] {
-  return [...new Set(tokens.filter((t) => !t.isKnown).map((t) => t.word))]
+  return [...new Set(tokens.filter((t) => !t.isKnown && !isStopWord(t.word)).map((t) => t.word))]
 }
