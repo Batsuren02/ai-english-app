@@ -159,7 +159,7 @@ export default function ReadingPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="card p-8 text-center text-[var(--ink-light)]">Loading your vocabulary...</div>
+        <div className="card p-8 text-center text-[var(--text-secondary)]">Loading your vocabulary...</div>
       </div>
     )
   }
@@ -167,21 +167,21 @@ export default function ReadingPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="font-display text-3xl text-[var(--ink)] mb-2">Reading Mode</h1>
-        <p className="text-[var(--ink-light)]">Paste text and learn unknown words instantly</p>
+        <h1 className="font-display text-3xl text-[var(--text)] mb-2">Reading Mode</h1>
+        <p className="text-[var(--text-secondary)]">Paste text and learn unknown words instantly</p>
       </div>
 
       {phase === 'input' && (
         <div className="card p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[var(--ink)] mb-2">Paste your text</label>
+            <label className="block text-sm font-medium text-[var(--text)] mb-2">Paste your text</label>
             <Textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Paste an article, book excerpt, or any English text here..."
               className="min-h-64"
             />
-            <p className="text-xs text-[var(--ink-light)] mt-2">
+            <p className="text-xs text-[var(--text-secondary)] mt-2">
               {textInput.length} characters · ~{Math.ceil(textInput.split(/\s+/).length)} words
             </p>
           </div>
@@ -202,7 +202,7 @@ export default function ReadingPage() {
           <div className="card p-6">
             <div className="text-center">
               <div className="text-4xl font-display text-[var(--accent)] mb-2">{comprehension?.percentage}%</div>
-              <p className="text-[var(--ink-light)] text-sm">
+              <p className="text-[var(--text-secondary)] text-sm">
                 You know {comprehension?.knownCount} of {comprehension?.totalCount} words
               </p>
               <div className="mt-4 w-full bg-[var(--border)] rounded-full h-2 overflow-hidden">
@@ -216,8 +216,8 @@ export default function ReadingPage() {
 
           {/* Reading Text */}
           <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-[var(--ink)]">Your Text</h2>
-            <div className="leading-relaxed text-[var(--ink)] text-sm p-4 bg-[var(--bg)] rounded border border-[var(--border)]">
+            <h2 className="font-semibold text-[var(--text)]">Your Text</h2>
+            <div className="leading-relaxed text-[var(--text)] text-sm p-4 bg-[var(--surface)] rounded border border-[var(--border)]">
               {buildHighlightedTokens(textInput, tokens).map((segment, i) => (
                 <span
                   key={i}
@@ -241,14 +241,14 @@ export default function ReadingPage() {
           {/* Unknown Words */}
           {unknownWords.length > 0 && (
             <div className="card p-6 space-y-4">
-              <h2 className="font-semibold text-[var(--ink)]">
+              <h2 className="font-semibold text-[var(--text)]">
                 Unknown Words ({unknownWords.length})
               </h2>
               <div className="flex flex-wrap gap-2">
                 {unknownWords.map((word) => (
                   <div
                     key={word}
-                    className="flex items-center gap-2 px-3 py-2 bg-[var(--bg)] rounded border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-[var(--surface)] rounded border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
                   >
                     <span className="text-sm">{word}</span>
                     {!sessionsAdded.includes(word) ? (
@@ -300,7 +300,7 @@ export default function ReadingPage() {
             <DialogTitle className="capitalize">{selectedWord}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-[var(--ink-light)]">
+            <p className="text-sm text-[var(--text-secondary)]">
               This word is not in your vocabulary yet.
             </p>
             <Button
@@ -314,7 +314,7 @@ export default function ReadingPage() {
             >
               Add to Vocabulary
             </Button>
-            <p className="text-xs text-[var(--ink-light)] text-center">
+            <p className="text-xs text-[var(--text-secondary)] text-center">
               You can edit the definition later in the Words page.
             </p>
           </div>

@@ -113,7 +113,7 @@ export default function WordsPage() {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex items-center justify-center h-40 text-[var(--ink-light)]">
+    <div className="flex items-center justify-center h-40 text-[var(--text-secondary)]">
       Loading words…
     </div>
   )
@@ -125,8 +125,8 @@ export default function WordsPage() {
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="font-display text-2xl text-[var(--ink)]">Word Library</h2>
-          <p className="text-sm text-[var(--ink-light)] mt-0.5">{words.length} words total</p>
+          <h2 className="font-display text-2xl text-[var(--text)]">Word Library</h2>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">{words.length} words total</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={exportJSON}>
@@ -142,7 +142,7 @@ export default function WordsPage() {
       <div className="flex flex-wrap gap-2">
         {/* Search */}
         <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-light)] pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
           <Input
             placeholder="Search words…"
             value={search}
@@ -176,7 +176,7 @@ export default function WordsPage() {
 
       {/* ── Word list ────────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
-        <div className="card p-10 text-center text-[var(--ink-light)]">
+        <div className="card p-10 text-center text-[var(--text-secondary)]">
           {words.length === 0 ? 'No words yet. Add your first word!' : 'No words match your filters.'}
         </div>
       ) : (
@@ -194,22 +194,22 @@ export default function WordsPage() {
               {/* Word info — min-w-0 prevents flex child overflow */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-[var(--ink)] text-base">{w.word}</span>
+                  <span className="font-bold text-[var(--text)] text-base">{w.word}</span>
                   {w.ipa && (
-                    <span className="text-xs text-[var(--ink-light)] truncate max-w-[120px]">{w.ipa}</span>
+                    <span className="text-xs text-[var(--text-secondary)] truncate max-w-[120px]">{w.ipa}</span>
                   )}
                   {w.cefr_level && <Badge>{w.cefr_level}</Badge>}
                   {w.category   && <Badge variant="purple">{w.category}</Badge>}
                 </div>
                 {/* Definition: single line, truncated — never overflows */}
-                <p className="text-sm text-[var(--ink-light)] mt-1 truncate">
+                <p className="text-sm text-[var(--text-secondary)] mt-1 truncate">
                   {w.definition}
                 </p>
               </div>
               <ChevronDown
                 size={16}
                 className={cn(
-                  'text-[var(--ink-light)] transition-transform flex-shrink-0',
+                  'text-[var(--text-secondary)] transition-transform flex-shrink-0',
                   selectedWord?.id === w.id && 'rotate-180'
                 )}
               />
@@ -237,7 +237,7 @@ export default function WordsPage() {
             {/* Panel header */}
             <div className="flex items-start justify-between p-5 pb-3 border-b border-[var(--border)]">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="font-display text-2xl text-[var(--ink)] flex items-center gap-2 flex-wrap">
+                <h2 className="font-display text-2xl text-[var(--text)] flex items-center gap-2 flex-wrap">
                   <span className="truncate">{selectedWord.word}</span>
                   <button
                     onClick={() => speak(selectedWord.word)}
@@ -247,7 +247,7 @@ export default function WordsPage() {
                   </button>
                 </h2>
                 {selectedWord.ipa && (
-                  <p className="text-sm text-[var(--ink-light)] mt-0.5">{selectedWord.ipa}</p>
+                  <p className="text-sm text-[var(--text-secondary)] mt-0.5">{selectedWord.ipa}</p>
                 )}
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedWord(null)}>
@@ -267,21 +267,21 @@ export default function WordsPage() {
 
                 {/* Definition */}
                 <div>
-                  <p className="text-base text-[var(--ink)] leading-relaxed">{selectedWord.definition}</p>
+                  <p className="text-base text-[var(--text)] leading-relaxed">{selectedWord.definition}</p>
                   {selectedWord.mongolian && (
-                    <p className="text-sm text-[var(--ink-light)] italic mt-1">{selectedWord.mongolian}</p>
+                    <p className="text-sm text-[var(--text-secondary)] italic mt-1">{selectedWord.mongolian}</p>
                   )}
                 </div>
 
                 {/* Examples */}
                 {(selectedWord.examples as string[] || []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[var(--ink-light)] uppercase tracking-wider mb-2">
+                    <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                       Examples
                     </h4>
                     <div className="space-y-1">
                       {(selectedWord.examples as string[]).map((ex, i) => (
-                        <p key={i} className="text-sm text-[var(--ink)] italic border-b border-[var(--border)] pb-1">
+                        <p key={i} className="text-sm text-[var(--text)] italic border-b border-[var(--border)] pb-1">
                           "{ex}"
                         </p>
                       ))}
@@ -292,7 +292,7 @@ export default function WordsPage() {
                 {/* Collocations */}
                 {(selectedWord.collocations as string[] || []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[var(--ink-light)] uppercase tracking-wider mb-2">
+                    <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                       Collocations
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
@@ -304,10 +304,10 @@ export default function WordsPage() {
                 {/* Memory hint */}
                 {selectedWord.etymology_hint && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[var(--ink-light)] uppercase tracking-wider mb-2">
+                    <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                       Memory Hint
                     </h4>
-                    <p className="text-sm text-[var(--ink)] bg-[var(--bg)] rounded-lg p-3 leading-relaxed">
+                    <p className="text-sm text-[var(--text)] bg-[var(--surface)] rounded-lg p-3 leading-relaxed">
                       {selectedWord.etymology_hint}
                     </p>
                   </div>
@@ -341,8 +341,8 @@ export default function WordsPage() {
             {/* ── JSON tab ── */}
             <TabsContent value="json" className="space-y-4">
               {/* Prompt helper */}
-              <div className="rounded-lg bg-[var(--bg)] p-4 space-y-2">
-                <p className="text-xs text-[var(--ink-light)]">Generate a word card prompt for Claude:</p>
+              <div className="rounded-lg bg-[var(--surface)] p-4 space-y-2">
+                <p className="text-xs text-[var(--text-secondary)]">Generate a word card prompt for Claude:</p>
                 <div className="flex gap-2 flex-wrap">
                   <Input
                     placeholder="Enter a word…"
@@ -363,7 +363,7 @@ export default function WordsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <p className="text-xs text-[var(--ink-light)]">Paste Claude's JSON response:</p>
+                <p className="text-xs text-[var(--text-secondary)]">Paste Claude's JSON response:</p>
                 <Textarea
                   rows={8}
                   placeholder={'{"word": "example", "definition": "...", ...}'}
@@ -391,7 +391,7 @@ export default function WordsPage() {
                 { key: 'ipa',           label: 'IPA',            placeholder: '/ɛləkwənt/'               },
               ] as const).map(({ key, label, placeholder }) => (
                 <div key={key} className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--ink)]">{label}</label>
+                  <label className="text-xs font-semibold text-[var(--text)]">{label}</label>
                   <Input
                     placeholder={placeholder}
                     value={(manualWord as any)[key]}
@@ -402,7 +402,7 @@ export default function WordsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--ink)]">CEFR Level</label>
+                  <label className="text-xs font-semibold text-[var(--text)]">CEFR Level</label>
                   <Select value={manualWord.cefr_level} onValueChange={v => setManualWord(p => ({ ...p, cefr_level: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -411,7 +411,7 @@ export default function WordsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--ink)]">Category</label>
+                  <label className="text-xs font-semibold text-[var(--text)]">Category</label>
                   <Select value={manualWord.category} onValueChange={v => setManualWord(p => ({ ...p, category: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>

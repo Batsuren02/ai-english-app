@@ -99,7 +99,7 @@ export default function PronunciationPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="card p-8 text-center text-[var(--ink-light)]">Loading words...</div>
+        <div className="card p-8 text-center text-[var(--text-secondary)]">Loading words...</div>
       </div>
     )
   }
@@ -107,15 +107,15 @@ export default function PronunciationPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="font-display text-3xl text-[var(--ink)] mb-2">Pronunciation Practice</h1>
-        <p className="text-[var(--ink-light)]">Record yourself and compare with native pronunciation</p>
+        <h1 className="font-display text-3xl text-[var(--text)] mb-2">Pronunciation Practice</h1>
+        <p className="text-[var(--text-secondary)]">Record yourself and compare with native pronunciation</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Word Selector */}
         <div className="md:col-span-1">
           <div className="card p-4 space-y-3 h-full flex flex-col">
-            <h2 className="font-semibold text-[var(--ink)] text-sm">Select Word</h2>
+            <h2 className="font-semibold text-[var(--text)] text-sm">Select Word</h2>
             <Input
               placeholder="Search..."
               value={search}
@@ -135,7 +135,7 @@ export default function PronunciationPage() {
                     className={`w-full text-left p-2 rounded text-sm transition-all ${
                       selectedWord?.id === word.id
                         ? 'bg-[var(--accent)] text-white'
-                        : 'hover:bg-[var(--border)] text-[var(--ink)]'
+                        : 'hover:bg-[var(--border)] text-[var(--text)]'
                     }`}
                   >
                     <div className="font-medium">{word.word}</div>
@@ -155,8 +155,8 @@ export default function PronunciationPage() {
               <div className="card p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="font-display text-2xl text-[var(--ink)] mb-1">{selectedWord.word}</h2>
-                    <p className="text-sm text-[var(--ink-light)]">{selectedWord.definition}</p>
+                    <h2 className="font-display text-2xl text-[var(--text)] mb-1">{selectedWord.word}</h2>
+                    <p className="text-sm text-[var(--text-secondary)]">{selectedWord.definition}</p>
                     {selectedWord.ipa && (
                       <p className="text-xs text-[var(--accent)] mt-2">/{selectedWord.ipa}/</p>
                     )}
@@ -181,14 +181,14 @@ export default function PronunciationPage() {
                   color="var(--accent)"
                   height={64}
                 />
-                <p className="text-xs text-[var(--ink-light)] mt-3 italic">
+                <p className="text-xs text-[var(--text-secondary)] mt-3 italic">
                   Shown using browser text-to-speech
                 </p>
               </div>
 
               {/* Recording */}
               <div className="card p-6">
-                <h3 className="font-semibold text-[var(--ink)] mb-4 text-center">Your Recording</h3>
+                <h3 className="font-semibold text-[var(--text)] mb-4 text-center">Your Recording</h3>
                 <AudioRecorder word={selectedWord} onRecordingComplete={handleRecordingComplete} />
               </div>
 
@@ -225,9 +225,9 @@ export default function PronunciationPage() {
                   {/* Score Placeholder */}
                   <div className="card p-6 bg-gradient-to-br from-[var(--accent-light)] to-[var(--bg)]">
                     <div className="text-center">
-                      <p className="text-sm text-[var(--ink-light)] mb-2">Similarity Score</p>
+                      <p className="text-sm text-[var(--text-secondary)] mb-2">Similarity Score</p>
                       <div className="text-3xl font-display text-[var(--accent)] mb-2">--</div>
-                      <p className="text-xs text-[var(--ink-light)]">
+                      <p className="text-xs text-[var(--text-secondary)]">
                         Claude AI feedback available (copy prompt below)
                       </p>
                     </div>
@@ -235,11 +235,11 @@ export default function PronunciationPage() {
 
                   {/* Claude Feedback Prompt */}
                   <div className="card p-6 space-y-3">
-                    <h3 className="font-semibold text-[var(--ink)] text-sm">Get AI Feedback</h3>
-                    <p className="text-xs text-[var(--ink-light)]">
+                    <h3 className="font-semibold text-[var(--text)] text-sm">Get AI Feedback</h3>
+                    <p className="text-xs text-[var(--text-secondary)]">
                       Copy the prompt below, paste into Claude.ai with your recording description, and get detailed pronunciation feedback.
                     </p>
-                    <div className="bg-[var(--bg)] p-3 rounded border border-[var(--border)] text-xs font-mono whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+                    <div className="bg-[var(--surface)] p-3 rounded border border-[var(--border)] text-xs font-mono whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
                       I recorded myself saying the word "{selectedWord.word}". Can you analyze my pronunciation and
                       suggest improvements? The reference pronunciation is /{selectedWord.ipa}/. My recording sounds [describe
                       your sound here].
@@ -263,7 +263,7 @@ export default function PronunciationPage() {
               )}
             </>
           ) : (
-            <div className="card p-12 text-center text-[var(--ink-light)]">
+            <div className="card p-12 text-center text-[var(--text-secondary)]">
               <p>Select a word to start practicing pronunciation</p>
             </div>
           )}
