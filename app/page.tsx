@@ -7,6 +7,9 @@ import { supabase, UserProfile, Word, Review } from '@/lib/supabase'
 import Link from 'next/link'
 import { Brain, BookMarked, Flame, Star, TrendingUp, Zap, ChevronRight, AlertTriangle, FileText, Mic2 } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
+import StatCard from '@/components/design/StatCard'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -68,173 +71,175 @@ export default function Dashboard() {
   const xpProgress = profile ? (profile.total_xp % xpForNextLevel) / xpForNextLevel * 100 : 0
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300 }}>
-      <div style={{ color: 'var(--ink-light)', fontStyle: 'italic' }}>Loading your progress...</div>
+    <div className="flex items-center justify-center h-72">
+      <TextSecondary className="italic">Loading your progress...</TextSecondary>
     </div>
   )
 
   return (
     <div className="fade-in">
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 28, marginBottom: 4 }}>Good day! 👋</h2>
-        <p style={{ color: 'var(--ink-light)' }}>
+      <div className="mb-8">
+        <TextPrimary className="text-3xl font-bold mb-1">Good day! 👋</TextPrimary>
+        <TextSecondary className="text-base">
           {dueCount > 0 ? `You have ${dueCount} words to review today.` : 'All caught up! Great work.'}
-        </p>
+        </TextSecondary>
       </div>
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {[
-          { icon: Brain, label: 'Due Today', value: dueCount, color: dueCount > 0 ? '#d97706' : '#16a34a' },
-          { icon: BookMarked, label: 'Total Words', value: totalWords, color: '#2563eb' },
-          { icon: Flame, label: 'Streak', value: `${profile?.current_streak || 0}d`, color: '#dc2626' },
-          { icon: Star, label: 'XP', value: profile?.total_xp || 0, color: '#9333ea' },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="card" style={{ padding: '20px 16px', textAlign: 'center' }}>
-            <Icon size={24} style={{ color, margin: '0 auto 8px' }} />
-            <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-display)', color }}>{value}</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-light)' }}>{label}</div>
-          </div>
-        ))}
+        <StatCard icon={<Brain size={24} />} label="Due Today" value={dueCount} color={dueCount > 0 ? 'var(--accent)' : 'var(--success)'} />
+        <StatCard icon={<BookMarked size={24} />} label="Total Words" value={totalWords} color="var(--accent)" />
+        <StatCard icon={<Flame size={24} />} label="Streak" value={`${profile?.current_streak || 0}d`} color="#dc2626" />
+        <StatCard icon={<Star size={24} />} label="XP" value={profile?.total_xp || 0} color="#9333ea" />
       </div>
 
       {/* XP Progress */}
       {profile && (
-        <div className="card" style={{ padding: '16px 20px', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
-            <span style={{ fontWeight: 600 }}>Level {profile.level}</span>
-            <span style={{ color: 'var(--ink-light)' }}>{profile.total_xp % xpForNextLevel} / {xpForNextLevel} XP</span>
+        <SurfaceCard padding="md" className="mb-6">
+          <div className="flex justify-between mb-2 text-sm">
+            <TextPrimary className="font-semibold">Level {profile.level}</TextPrimary>
+            <TextSecondary className="text-xs">{profile.total_xp % xpForNextLevel} / {xpForNextLevel} XP</TextSecondary>
           </div>
-          <div style={{ background: 'var(--border)', borderRadius: 4, height: 8 }}>
-            <div style={{ background: '#9333ea', borderRadius: 4, height: 8, width: `${xpProgress}%`, transition: 'width 0.5s ease' }} />
+          <div className="w-full h-2 bg-[var(--border)] rounded overflow-hidden">
+            <div className="h-full bg-purple-500 rounded transition-all duration-500" style={{ width: `${xpProgress}%` }} />
           </div>
-        </div>
+        </SurfaceCard>
       )}
 
       {/* Daily Challenge */}
-      <div style={{ marginBottom: 32 }}>
+      <div className="mb-8">
         <DailyChallengeCard />
       </div>
 
       {/* Quick Actions */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 32 }}>
         {dueCount > 0 && (
-          <Link href="/learn" style={{ textDecoration: 'none' }}>
-            <div style={{
-              background: 'var(--accent)', color: 'white', borderRadius: 12,
-              padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
+          <Link href="/learn" className="no-underline">
+            <SurfaceCard hover className="bg-[var(--accent)] text-white flex items-center justify-between cursor-pointer">
               <div>
-                <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 2 }}>Start Review</div>
-                <div style={{ opacity: 0.85, fontSize: 13 }}>{dueCount} words due</div>
+                <TextPrimary className="font-bold text-base mb-0.5">Start Review</TextPrimary>
+                <TextSecondary className="text-xs opacity-85">{dueCount} words due</TextSecondary>
               </div>
               <ChevronRight size={20} />
-            </div>
+            </SurfaceCard>
           </Link>
         )}
-        <Link href="/words" style={{ textDecoration: 'none' }}>
-          <div className="card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href="/words" className="no-underline">
+          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Add Word</div>
-              <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>Paste from Claude</div>
+              <TextPrimary className="font-bold text-sm mb-0.5">Add Word</TextPrimary>
+              <TextSecondary className="text-xs">Paste from Claude</TextSecondary>
             </div>
-            <ChevronRight size={18} color="var(--ink-light)" />
-          </div>
+            <ChevronRight size={18} />
+          </SurfaceCard>
         </Link>
-        <Link href="/quiz" style={{ textDecoration: 'none' }}>
-          <div className="card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href="/quiz" className="no-underline">
+          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Practice Quiz</div>
-              <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>6 quiz types</div>
+              <TextPrimary className="font-bold text-sm mb-0.5">Practice Quiz</TextPrimary>
+              <TextSecondary className="text-xs">6 quiz types</TextSecondary>
             </div>
-            <ChevronRight size={18} color="var(--ink-light)" />
-          </div>
+            <ChevronRight size={18} />
+          </SurfaceCard>
         </Link>
-        <Link href="/reading" style={{ textDecoration: 'none' }}>
-          <div className="card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href="/reading" className="no-underline">
+          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Reading</div>
-              <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>Learn from text</div>
+              <TextPrimary className="font-bold text-sm mb-0.5">Reading</TextPrimary>
+              <TextSecondary className="text-xs">Learn from text</TextSecondary>
             </div>
-            <ChevronRight size={18} color="var(--ink-light)" />
-          </div>
+            <ChevronRight size={18} />
+          </SurfaceCard>
         </Link>
-        <Link href="/pronunciation" style={{ textDecoration: 'none' }}>
-          <div className="card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href="/pronunciation" className="no-underline">
+          <SurfaceCard hover className="flex items-center justify-between cursor-pointer">
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>Pronunciation</div>
-              <div style={{ color: 'var(--ink-light)', fontSize: 13 }}>Practice speaking</div>
+              <TextPrimary className="font-bold text-sm mb-0.5">Pronunciation</TextPrimary>
+              <TextSecondary className="text-xs">Practice speaking</TextSecondary>
             </div>
-            <ChevronRight size={18} color="var(--ink-light)" />
-          </div>
+            <ChevronRight size={18} />
+          </SurfaceCard>
         </Link>
       </div>
 
       {/* Activity chart */}
-      <div className="card" style={{ padding: '20px', marginBottom: 24 }}>
-        <h3 style={{ fontSize: 17, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <TrendingUp size={16} /> 7-Day Activity
-        </h3>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 80 }}>
+      <SurfaceCard padding="md" className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={16} className="text-[var(--accent)]" />
+          <TextPrimary className="text-sm font-semibold">7-Day Activity</TextPrimary>
+        </div>
+        <div className="flex gap-2 items-end h-20">
           {recentActivity.map(({ date, count }) => {
             const maxC = Math.max(...recentActivity.map(r => r.count), 1)
             const h = count ? (count / maxC) * 64 + 4 : 4
             return (
-              <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{
-                  width: '100%', height: h, background: count ? 'var(--accent)' : 'var(--border)',
-                  borderRadius: 4, transition: 'height 0.3s',
-                }} title={`${count} reviews`} />
-                <span style={{ fontSize: 10, color: 'var(--ink-light)' }}>{date}</span>
+              <div key={date} className="flex-1 flex flex-col items-center gap-1">
+                <div
+                  className="w-full rounded transition-all duration-300"
+                  style={{
+                    height: `${h}px`,
+                    background: count ? 'var(--accent)' : 'var(--border)',
+                  }}
+                  title={`${count} reviews`}
+                />
+                <span className="text-[10px] text-[var(--text-secondary)]">{date}</span>
               </div>
             )
           })}
         </div>
-      </div>
+      </SurfaceCard>
 
       {/* Phase 4 Features Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {[
-          { icon: '📖', label: 'Reading Sessions', value: readingSessions, color: '#2563eb' },
-          { icon: '🎤', label: 'Pronunciations', value: pronunciationAttempts, color: '#d97706' },
-        ].map(({ icon, label, value, color }) => (
-          <div key={label} className="card" style={{ padding: '20px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
-            <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-display)', color, marginBottom: 4 }}>{value}</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-light)' }}>{label}</div>
-          </div>
-        ))}
+        <div>
+          <StatCard
+            icon={<span className="text-3xl">📖</span>}
+            label="Reading Sessions"
+            value={readingSessions}
+            color="var(--accent)"
+          />
+        </div>
+        <div>
+          <StatCard
+            icon={<span className="text-3xl">🎤</span>}
+            label="Pronunciations"
+            value={pronunciationAttempts}
+            color="var(--accent)"
+          />
+        </div>
       </div>
 
       {/* Weak words */}
       {weakWords.length > 0 && (
-        <div className="card" style={{ padding: '20px' }}>
-          <h3 style={{ fontSize: 17, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <AlertTriangle size={16} color="#f59e0b" /> Words Needing Attention
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <SurfaceCard padding="md">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle size={16} className="text-yellow-500" />
+            <TextPrimary className="text-sm font-semibold">Words Needing Attention</TextPrimary>
+          </div>
+          <div className="space-y-2.5">
             {weakWords.map((w: any) => (
-              <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={w.id} className="flex justify-between items-center">
                 <div>
-                  <span style={{ fontWeight: 600 }}>{w.word}</span>
-                  <span style={{ color: 'var(--ink-light)', fontSize: 13, marginLeft: 8 }}>{w.definition?.slice(0, 50)}...</span>
+                  <TextPrimary className="font-semibold">{w.word}</TextPrimary>
+                  <TextSecondary className="text-xs ml-2">{w.definition?.slice(0, 50)}...</TextSecondary>
                 </div>
-                <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>EF: {w.ease_factor}</span>
+                <span className="text-xs font-semibold text-red-600">EF: {w.ease_factor}</span>
               </div>
             ))}
           </div>
-        </div>
+        </SurfaceCard>
       )}
 
       {totalWords === 0 && (
-        <div className="card" style={{ padding: 32, textAlign: 'center', marginTop: 24 }}>
-          <Zap size={40} style={{ color: 'var(--accent)', margin: '0 auto 12px' }} />
-          <h3 style={{ marginBottom: 8 }}>Start your journey!</h3>
-          <p style={{ color: 'var(--ink-light)', marginBottom: 16 }}>Add your first words to get started.</p>
+        <SurfaceCard padding="lg" className="text-center mt-6">
+          <div className="flex justify-center mb-3">
+            <Zap size={40} className="text-[var(--accent)]" />
+          </div>
+          <TextPrimary className="text-lg font-bold mb-2">Start your journey!</TextPrimary>
+          <TextSecondary className="text-sm mb-4">Add your first words to get started.</TextSecondary>
           <Link href="/words"><button className="btn-primary">Add Words</button></Link>
-        </div>
+        </SurfaceCard>
       )}
     </div>
   )
