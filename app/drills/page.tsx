@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { supabase, Word, Review } from '@/lib/supabase'
+import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { getWeakWords, calculateDrillStats, generateDrillQuiz, DEFAULT_DRILL_CONFIG, DrillConfig } from '@/lib/drill-generator'
 import { calculateSM2 } from '@/lib/srs'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ export default function DrillsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [weakWords, setWeakWords] = useState<Word[]>([])
   const [config, setConfig] = useState<DrillConfig>(DEFAULT_DRILL_CONFIG)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Drill session state
@@ -33,13 +34,26 @@ export default function DrillsPage() {
 
   const loadData = async () => {
     try {
-      const [wordsRes, reviewsRes] = await Promise.all([
+      const [wordsRes, reviewsRes, profileRes] = await Promise.all([
         supabase.from('words').select('*'),
         supabase.from('reviews').select('*'),
+        supabase.from('user_profile').select('*').single(),
       ])
 
       if (wordsRes.data) setWords(wordsRes.data)
       if (reviewsRes.data) setReviews(reviewsRes.data)
+      if (profileRes.data) {
+        setProfile(profileRes.data)
+        // Load saved drill config
+        const newConfig = { ...DEFAULT_DRILL_CONFIG }
+        if ((profileRes.data as any).drill_ease_threshold) {
+          newConfig.easeFactorThreshold = (profileRes.data as any).drill_ease_threshold
+        }
+        if ((profileRes.data as any).drill_session_length) {
+          newConfig.sessionLength = (profileRes.data as any).drill_session_length
+        }
+        setConfig(newConfig)
+      }
     } catch (err) {
       console.error('Failed to load data:', err)
     } finally {
@@ -134,6 +148,14 @@ export default function DrillsPage() {
       user_answer: userAnswer,
       source: 'drill',
     })
+
+    // Award XP for correct answers
+    if (correct) {
+      const { data: prof } = await supabase.from('user_profile').select('id, total_xp').single()
+      if (prof) {
+        await supabase.from('user_profile').update({ total_xp: (prof.total_xp || 0) + 10 }).eq('id', prof.id)
+      }
+    }
   }
 
   const handleNextQuestion = () => {
@@ -183,7 +205,12 @@ export default function DrillsPage() {
                 max="2.5"
                 step="0.1"
                 value={config.easeFactorThreshold}
-                onChange={(e) => setConfig({ ...config, easeFactorThreshold: parseFloat(e.target.value) })}
+                onChange={(e) => {
+                  const newConfig = { ...config, easeFactorThreshold: parseFloat(e.target.value) }
+                  setConfig(newConfig)
+                  // Save to user_profile
+                  supabase.from('user_profile').update({ drill_ease_threshold: newConfig.easeFactorThreshold }).eq('id', (profile as any)?.id).catch(err => console.error('Failed to save config:', err))
+                }}
               />
               <p className="text-xs text-[var(--ink-light)] mt-1">
                 Lower = harder words. Default 2.8 includes your hardest words.
@@ -199,7 +226,12 @@ export default function DrillsPage() {
                 min="5"
                 max="20"
                 value={config.sessionLength}
-                onChange={(e) => setConfig({ ...config, sessionLength: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const newConfig = { ...config, sessionLength: parseInt(e.target.value) }
+                  setConfig(newConfig)
+                  // Save to user_profile
+                  supabase.from('user_profile').update({ drill_session_length: newConfig.sessionLength }).eq('id', (profile as any)?.id).catch(err => console.error('Failed to save config:', err))
+                }}
               />
             </div>
 

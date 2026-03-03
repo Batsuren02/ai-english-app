@@ -139,6 +139,12 @@ export default function ReadingPage() {
         // Create review entry
         await supabase.from('reviews').insert({ word_id: data.id })
 
+        // Award XP for adding word from reading
+        const { data: prof } = await supabase.from('user_profile').select('id, total_xp').single()
+        if (prof) {
+          await supabase.from('user_profile').update({ total_xp: (prof.total_xp || 0) + 5 }).eq('id', prof.id)
+        }
+
         // Update local state
         setWords([...words, data])
         setSessionsAdded([...sessionsAdded, word])

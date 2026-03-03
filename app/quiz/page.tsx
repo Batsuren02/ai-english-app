@@ -378,8 +378,8 @@ export default function QuizPage() {
                 {quiz.options?.map(opt => {
                   let bg = 'var(--bg)', border = 'var(--border)', color = 'var(--ink)'
                   if (feedback) {
-                    if (opt === quiz.answer) { bg = '#dcfce7'; border = '#16a34a'; color = '#166534' }
-                    else if (opt === userAnswer && feedback === 'wrong') { bg = '#fee2e2'; border = '#dc2626'; color = '#991b1b' }
+                    if (opt === quiz.answer) { bg = 'rgba(22, 163, 74, 0.1)'; border = '#16a34a'; color = '#16a34a' }
+                    else if (opt === userAnswer && feedback === 'wrong') { bg = 'rgba(220, 38, 38, 0.1)'; border = '#dc2626'; color = '#dc2626' }
                   }
                   return (
                     <button key={opt} onClick={() => selectMCQ(opt)} disabled={!!feedback} style={{
@@ -406,8 +406,8 @@ export default function QuizPage() {
                     return (
                       <button key={word} onClick={() => !isMatched && handleMatchClick(word, true)} disabled={!!isMatched || matchDone} style={{
                         padding: '10px 12px', borderRadius: 8, border: `2px solid ${isMatched ? '#16a34a' : isSelected ? 'var(--accent)' : isWrong ? '#dc2626' : 'var(--border)'}`,
-                        background: isMatched ? '#dcfce7' : isSelected ? '#fef3c7' : isWrong ? '#fee2e2' : 'var(--bg)',
-                        color: isMatched ? '#166534' : 'var(--ink)', fontWeight: 700, cursor: isMatched ? 'default' : 'pointer',
+                        background: isMatched ? 'rgba(22, 163, 74, 0.1)' : isSelected ? 'rgba(var(--accent-rgb), 0.1)' : isWrong ? 'rgba(220, 38, 38, 0.1)' : 'var(--bg)',
+                        color: isMatched ? '#16a34a' : 'var(--ink)', fontWeight: 700, cursor: isMatched ? 'default' : 'pointer',
                         fontFamily: 'var(--font-body)', fontSize: 14, textAlign: 'left', transition: 'all 0.15s',
                       }}>
                         {word} {isMatched && '✓'}
@@ -425,8 +425,8 @@ export default function QuizPage() {
                       <button key={def} onClick={() => !isMatched && matchState.selected && handleMatchClick(def, false)}
                         disabled={isMatched || matchDone || !matchState.selected} style={{
                           padding: '10px 12px', borderRadius: 8, border: `2px solid ${isMatched ? '#16a34a' : isWrong ? '#dc2626' : matchState.selected ? 'var(--accent)' : 'var(--border)'}`,
-                          background: isMatched ? '#dcfce7' : isWrong ? '#fee2e2' : 'var(--bg)',
-                          color: isMatched ? '#166534' : 'var(--ink)', cursor: isMatched ? 'default' : matchState.selected ? 'pointer' : 'default',
+                          background: isMatched ? 'rgba(22, 163, 74, 0.1)' : isWrong ? 'rgba(220, 38, 38, 0.1)' : 'var(--bg)',
+                          color: isMatched ? '#16a34a' : 'var(--ink)', cursor: isMatched ? 'default' : matchState.selected ? 'pointer' : 'default',
                           fontFamily: 'var(--font-body)', fontSize: 12, textAlign: 'left', lineHeight: 1.4, transition: 'all 0.15s',
                         }}>
                         {def?.slice(0, 60)}{(def?.length || 0) > 60 ? '...' : ''} {isMatched && '✓'}
@@ -474,14 +474,14 @@ export default function QuizPage() {
           {(feedback || matchDone) && (
             <div className="fade-in card" style={{
               padding: '20px 24px', marginBottom: 12,
-              background: feedback === 'correct' ? '#f0fdf4' : '#fff1f2',
+              background: feedback === 'correct' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.1)',
               borderColor: feedback === 'correct' ? '#16a34a' : '#dc2626',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 {feedback === 'correct'
                   ? <CheckCircle size={22} style={{ color: '#16a34a' }} />
                   : <XCircle size={22} style={{ color: '#dc2626' }} />}
-                <span style={{ fontWeight: 700, fontSize: 17, color: feedback === 'correct' ? '#166534' : '#991b1b' }}>
+                <span style={{ fontWeight: 700, fontSize: 17, color: feedback === 'correct' ? '#16a34a' : '#dc2626' }}>
                   {feedback === 'correct'
                     ? (matchDone ? 'All matched! 🎉' : 'Correct! 🎉')
                     : `Wrong — answer: ${quiz.type !== 'matching' ? quiz.answer : ''}`}
