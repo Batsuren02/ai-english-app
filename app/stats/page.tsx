@@ -4,9 +4,13 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
-import { Download, TrendingUp, Target, Zap, Flame, BookMarked } from 'lucide-react'
-import { PROMPTS } from '@/lib/prompts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle } from 'lucide-react'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import StatCard from '@/components/design/StatCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
+import LoadingSpinner from '@/components/design/LoadingSpinner'
+import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 export default function StatsPage() {
   const [weeklyData, setWeeklyData] = useState<any[]>([])
@@ -105,29 +109,35 @@ export default function StatsPage() {
     const maxCount = Math.max(...Object.values(calendarData), 1)
 
     return (
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'flex', gap: 3, minWidth: 'max-content' }}>
+      <div className="overflow-x-auto">
+        <div className="flex gap-1" style={{ minWidth: 'max-content' }}>
           {weeks.map((week, wi) => (
-            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div key={wi} className="flex flex-col gap-1">
               {week.map(date => {
                 const count = calendarData[date] || 0
                 const intensity = count === 0 ? 0 : Math.min(4, Math.ceil(count / maxCount * 4))
                 const colors = ['var(--border)', '#bbf7d0', '#4ade80', '#16a34a', '#14532d']
                 return (
-                  <div key={date} title={`${date}: ${count} reviews`} style={{
-                    width: 13, height: 13, borderRadius: 3,
-                    background: colors[intensity],
-                    cursor: count > 0 ? 'default' : 'default',
-                  }} />
+                  <div
+                    key={date}
+                    title={`${date}: ${count} reviews`}
+                    className="rounded transition-all"
+                    style={{
+                      width: 13,
+                      height: 13,
+                      borderRadius: '3px',
+                      background: colors[intensity],
+                    }}
+                  />
                 )
               })}
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 11, color: 'var(--ink-light)' }}>
+        <div className="flex items-center gap-2 mt-4 text-xs text-[var(--text-secondary)]">
           <span>Less</span>
           {['var(--border)', '#bbf7d0', '#4ade80', '#16a34a', '#14532d'].map((c, i) => (
-            <div key={i} style={{ width: 11, height: 11, borderRadius: 2, background: c }} />
+            <div key={i} style={{ width: 11, height: 11, borderRadius: '2px', background: c }} />
           ))}
           <span>More</span>
         </div>
@@ -137,124 +147,183 @@ export default function StatsPage() {
 
   const COLORS = ['#d97706', '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#0891b2']
 
-  if (loading) return <div style={{ color: 'var(--ink-light)', padding: 40 }}>Loading stats...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-72">
+      <LoadingSpinner size="md" label="Loading your stats..." />
+    </div>
+  )
 
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ fontSize: 26 }}>Progress & Stats</h2>
-        <button className="btn-ghost" onClick={exportForClaude} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '8px 14px' }}>
-          <Download size={14} /> Export for Claude
-        </button>
+    <div className="fade-in max-w-6xl space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="h2 text-[var(--text)] mb-2">Progress & Stats</h1>
+          <p className="body text-[var(--text-secondary)]">Track your learning journey and identify improvement areas</p>
+        </div>
+        <InteractiveButton
+          variant="secondary"
+          size="md"
+          onClick={exportForClaude}
+          className="flex items-center gap-2"
+        >
+          <Download size={16} />
+          Export Data
+        </InteractiveButton>
       </div>
 
-      {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 24 }}>
-        {[
-          { icon: BookMarked, label: 'Total Words', value: totalWords, color: '#2563eb' },
-          { icon: TrendingUp, label: 'Reviews (30d)', value: totalReviews, color: '#7c3aed' },
-          { icon: Target, label: 'Accuracy', value: `${avgAccuracy}%`, color: avgAccuracy >= 80 ? '#16a34a' : '#d97706' },
-          { icon: Flame, label: 'Streak', value: `${profile?.current_streak || 0}d`, color: '#dc2626' },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="card" style={{ padding: '16px', textAlign: 'center' }}>
-            <Icon size={20} style={{ color, margin: '0 auto 6px' }} />
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-display)', color }}>{value}</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-light)' }}>{label}</div>
-          </div>
-        ))}
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<BookMarked size={28} className="text-blue-500" />}
+          label="Total Words"
+          value={totalWords}
+          color="var(--accent)"
+          animated
+        />
+        <StatCard
+          icon={<TrendingUp size={28} className="text-purple-500" />}
+          label="Reviews (30d)"
+          value={totalReviews}
+          color="var(--accent)"
+          animated
+          trend={{ direction: 'up', percent: 10 }}
+        />
+        <StatCard
+          icon={<Target size={28} className={avgAccuracy >= 80 ? 'text-green-500' : 'text-amber-600'} />}
+          label="Accuracy"
+          value={`${avgAccuracy}%`}
+          color={avgAccuracy >= 80 ? '#16a34a' : '#d97706'}
+          trend={avgAccuracy >= 80 ? { direction: 'up', percent: 5 } : undefined}
+        />
+        <StatCard
+          icon={<Flame size={28} className="text-red-600" />}
+          label="Streak"
+          value={`${profile?.current_streak || 0}d`}
+          color="#dc2626"
+          trend={profile?.current_streak ? { direction: 'up', percent: profile.current_streak } : undefined}
+        />
       </div>
 
       {/* Streak Calendar */}
-      <div className="card" style={{ padding: '20px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 16, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Flame size={16} color="#d97706" /> Review Activity (16 weeks)
-        </h3>
+      <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+        <div className="flex items-center gap-2 mb-6">
+          <Flame size={18} className="text-amber-600" />
+          <h3 className="h4 text-[var(--text)]">Review Activity (16 weeks)</h3>
+        </div>
         {renderCalendar()}
-      </div>
+      </SurfaceCard>
 
       {/* 7-day chart */}
-      <div className="card" style={{ padding: '20px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 16, marginBottom: 14 }}>7-Day Reviews</h3>
-        <ResponsiveContainer width="100%" height={160}>
+      <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+        <h3 className="h4 text-[var(--text)] mb-6">7-Day Reviews</h3>
+        <ResponsiveContainer width="100%" height={200}>
           <BarChart data={weeklyData}>
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Bar dataKey="total" fill="#d9770640" radius={3} name="Total" />
-            <Bar dataKey="correct" fill="#d97706" radius={3} name="Correct" />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
+            <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
+            <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+            <Bar dataKey="total" fill="rgba(251, 146, 60, 0.2)" radius={[8, 8, 0, 0]} name="Total" />
+            <Bar dataKey="correct" fill="var(--accent)" radius={[8, 8, 0, 0]} name="Correct" />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </SurfaceCard>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Accuracy by quiz type */}
         {quizTypeData.length > 0 && (
-          <div className="card" style={{ padding: '18px' }}>
-            <h3 style={{ fontSize: 15, marginBottom: 12 }}>By Quiz Type</h3>
-            {quizTypeData.sort((a, b) => a.accuracy - b.accuracy).map(({ type, accuracy }) => (
-              <div key={type} style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
-                  <span style={{ textTransform: 'capitalize' }}>{type.replace('_', ' ')}</span>
-                  <span style={{ fontWeight: 700, color: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626' }}>{accuracy}%</span>
+          <SurfaceCard padding="lg">
+            <h3 className="h4 text-[var(--text)] mb-6">By Quiz Type</h3>
+            <div className="space-y-4">
+              {quizTypeData.sort((a, b) => a.accuracy - b.accuracy).map(({ type, accuracy }) => (
+                <div key={type}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="label text-[var(--text)] capitalize">{type.replace('_', ' ')}</span>
+                    <span className={`label font-bold ${
+                      accuracy >= 80 ? 'text-green-600' : accuracy >= 60 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
+                      {accuracy}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        accuracy >= 80 ? 'bg-green-600' : accuracy >= 60 ? 'bg-amber-600' : 'bg-red-600'
+                      }`}
+                      style={{ width: `${accuracy}%` }}
+                    />
+                  </div>
                 </div>
-                <div style={{ background: 'var(--border)', borderRadius: 3, height: 5 }}>
-                  <div style={{ background: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626', width: `${accuracy}%`, height: 5, borderRadius: 3 }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </SurfaceCard>
         )}
 
         {/* Words by CEFR */}
         {wordsPerLevel.length > 0 && (
-          <div className="card" style={{ padding: '18px' }}>
-            <h3 style={{ fontSize: 15, marginBottom: 12 }}>CEFR Levels</h3>
-            <PieChart width={150} height={150} style={{ margin: '0 auto' }}>
-              <Pie data={wordsPerLevel} dataKey="count" nameKey="level" cx="50%" cy="50%" outerRadius={65} innerRadius={30}>
-                {wordsPerLevel.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 8 }}>
-              {wordsPerLevel.map((item, i) => (
-                <span key={item.level} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[i % COLORS.length], display: 'inline-block' }} />
-                  {item.level}: {item.count}
-                </span>
-              ))}
+          <SurfaceCard padding="lg">
+            <h3 className="h4 text-[var(--text)] mb-6">CEFR Levels</h3>
+            <div className="flex flex-col items-center gap-6">
+              <PieChart width={150} height={150}>
+                <Pie data={wordsPerLevel} dataKey="count" nameKey="level" cx="50%" cy="50%" outerRadius={65} innerRadius={30}>
+                  {wordsPerLevel.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+              </PieChart>
+              <div className="flex flex-wrap gap-3 justify-center">
+                {wordsPerLevel.map((item, i) => (
+                  <div key={item.level} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className="text-sm text-[var(--text)]">{item.level}: {item.count}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </SurfaceCard>
         )}
       </div>
 
       {/* Weak words */}
       {weakWords.length > 0 && (
-        <div className="card" style={{ padding: '18px', marginBottom: 20 }}>
-          <h3 style={{ fontSize: 15, marginBottom: 12 }}>⚠️ Weakest Words (by ease factor)</h3>
-          {weakWords.slice(0, 7).map((w: any, i: number) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              <div>
-                <span style={{ fontWeight: 600 }}>{w.word}</span>
-                <span style={{ fontSize: 12, color: 'var(--ink-light)', marginLeft: 8 }}>{w.definition?.slice(0, 48)}</span>
+        <SurfaceCard padding="lg">
+          <div className="flex items-center gap-2 mb-6">
+            <AlertTriangle size={18} className="text-amber-500" />
+            <h3 className="h4 text-[var(--text)]">Weakest Words (by ease factor)</h3>
+          </div>
+          <div className="space-y-3">
+            {weakWords.slice(0, 7).map((w: any, i: number) => (
+              <div key={i} className="flex justify-between items-start gap-3 pb-3 border-b border-[var(--border)] last:border-0">
+                <div className="flex-1">
+                  <p className="font-semibold text-[var(--text)]">{w.word}</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">{w.definition?.slice(0, 60)}...</p>
+                </div>
+                <span className="text-xs font-semibold text-red-600 whitespace-nowrap">EF: {w.ease_factor?.toFixed(1)}</span>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginLeft: 12, flexShrink: 0 }}>EF {w.ease_factor?.toFixed(1)}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </SurfaceCard>
       )}
 
-      {/* Claude prompts */}
-      <div className="card" style={{ padding: '18px' }}>
-        <h3 style={{ fontSize: 15, marginBottom: 6 }}>🤖 Claude Analysis</h3>
-        <p style={{ fontSize: 13, color: 'var(--ink-light)', marginBottom: 12 }}>Export your data then paste to Claude.ai for AI-powered analysis.</p>
-        <button className="btn-ghost" onClick={exportForClaude} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          <Download size={14} /> Export Review Logs (JSON)
-        </button>
-        <div style={{ marginTop: 12, background: 'var(--bg)', borderRadius: 8, padding: '12px', fontSize: 12, color: 'var(--ink-light)', lineHeight: 1.7 }}>
-          <strong>After exporting, paste this to Claude:</strong><br />
-          "Here are my last 200 word reviews. Find patterns: which categories am I weakest in? Any spelling patterns? Mongolian L1 interference? Give me a study plan."
+      {/* Claude Analysis */}
+      <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+        <h3 className="h4 text-[var(--text)] mb-2">🤖 AI-Powered Analysis</h3>
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
+          Export your review data and get personalized insights from Claude AI
+        </p>
+        <InteractiveButton
+          variant="primary"
+          size="md"
+          onClick={exportForClaude}
+          className="flex items-center gap-2 mb-6"
+        >
+          <Download size={16} />
+          Export Review Logs (JSON)
+        </InteractiveButton>
+        <div className="p-4 bg-[var(--bg)] rounded-lg border-l-4 border-blue-500 space-y-3">
+          <p className="label text-[var(--text)]">💡 What to ask Claude:</p>
+          <p className="text-sm text-[var(--text-secondary)]">
+            "Here are my last 200 word reviews. Find patterns: which categories am I weakest in? Any spelling patterns? Mongolian L1 interference? Give me a personalized study plan."
+          </p>
         </div>
-      </div>
+      </SurfaceCard>
     </div>
   )
 }
