@@ -4,9 +4,12 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile } from '@/lib/supabase'
-import { Save, Copy, Check } from 'lucide-react'
+import { Save, Copy, Check, AlertCircle } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
 import NotificationSettings from '@/components/NotificationSettings'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
+import FormInput from '@/components/design/FormInput'
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Partial<UserProfile>>({
@@ -83,52 +86,82 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="fade-in" style={{ maxWidth: 640 }}>
-      <h2 style={{ fontSize: 26, marginBottom: 6 }}>Settings</h2>
-      <p style={{ color: 'var(--ink-light)', marginBottom: 28 }}>Personalize your learning experience</p>
+    <div className="fade-in max-w-2xl space-y-6">
+      <div>
+        <h1 className="h2 text-[var(--text)] mb-2">Settings</h1>
+        <p className="body text-[var(--text-secondary)]">Personalize your learning experience</p>
+      </div>
 
       {/* Error message */}
       {error && (
-        <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#991b1b', fontSize: 13 }}>
-          {error}
+        <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
+          <AlertCircle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
         </div>
       )}
 
-      {/* Profile settings */}
-      <div className="card" style={{ padding: '24px', marginBottom: 24 }}>
-        <h3 style={{ fontSize: 18, marginBottom: 18 }}>Learning Profile</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Profile Settings */}
+      <SurfaceCard padding="lg">
+        <h3 className="h3 text-[var(--text)] mb-5">Learning Profile</h3>
+        <div className="space-y-4">
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>CEFR Level</label>
-            <select className="input" value={profile.cefr_level} onChange={e => setProfile(p => ({ ...p, cefr_level: e.target.value }))}>
+            <label className="label text-[var(--text)] block mb-2">CEFR Level</label>
+            <select
+              className="input w-full"
+              value={profile.cefr_level}
+              onChange={e => setProfile(p => ({ ...p, cefr_level: e.target.value }))}
+            >
               {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
             </select>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">Your current English proficiency level</p>
           </div>
+
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Learning Goal</label>
-            <select className="input" value={profile.goal} onChange={e => setProfile(p => ({ ...p, goal: e.target.value }))}>
+            <label className="label text-[var(--text)] block mb-2">Learning Goal</label>
+            <select
+              className="input w-full"
+              value={profile.goal}
+              onChange={e => setProfile(p => ({ ...p, goal: e.target.value }))}
+            >
               {['general','ielts','business','travel'].map(g => <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>)}
             </select>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">What are you learning English for?</p>
           </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Daily Target (minutes)</label>
-            <input className="input" type="number" min={5} max={120} value={profile.daily_target_minutes} onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))} />
-          </div>
-          <button className="btn-primary" onClick={save} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: loading ? 0.6 : 1 }}>
-            {loading ? '...' : saved ? <Check size={16} /> : <Save size={16} />}
-            {loading ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
-          </button>
-        </div>
-      </div>
 
-      {/* Session Interleaving Settings */}
-      <div className="card" style={{ padding: '24px', marginBottom: 24 }}>
-        <h3 style={{ fontSize: 18, marginBottom: 18 }}>Session Interleaving</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              New Word Ratio: {Math.round((profile.interleave_ratio || 0.25) * 100)}%
-            </label>
+            <label className="label text-[var(--text)] block mb-2">Daily Target (minutes)</label>
+            <input
+              className="input w-full"
+              type="number"
+              min={5}
+              max={120}
+              value={profile.daily_target_minutes}
+              onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))}
+            />
+            <p className="text-xs text-[var(--text-secondary)] mt-1">Ideal daily practice time</p>
+          </div>
+
+          <InteractiveButton
+            variant="primary"
+            size="md"
+            onClick={save}
+            isLoading={loading}
+            className="mt-2"
+          >
+            {saved ? <><Check size={16} className="inline mr-2" />Saved!</> : <><Save size={16} className="inline mr-2" />Save Settings</>}
+          </InteractiveButton>
+        </div>
+      </SurfaceCard>
+
+      {/* Interleaving Settings */}
+      <SurfaceCard padding="lg">
+        <h3 className="h3 text-[var(--text)] mb-5">Session Interleaving</h3>
+        <div className="space-y-5">
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <label className="label text-[var(--text)]">New Word Ratio</label>
+              <span className="label font-semibold text-[var(--accent)]">{Math.round((profile.interleave_ratio || 0.25) * 100)}%</span>
+            </div>
             <input
               type="range"
               min="0.05"
@@ -136,15 +169,16 @@ export default function SettingsPage() {
               step="0.05"
               value={profile.interleave_ratio || 0.25}
               onChange={e => setProfile(p => ({ ...p, interleave_ratio: parseFloat(e.target.value) }))}
-              style={{ width: '100%' }}
+              className="w-full"
             />
-            <p style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 6 }}>How many new words to mix in with due words. Higher = more new words per session.</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-2">How many new words to mix with review words. Higher = more new words per session.</p>
           </div>
 
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              Category Mixing: {Math.round((profile.interleave_category_penalty || 0.6) * 100)}%
-            </label>
+            <div className="flex justify-between items-center mb-3">
+              <label className="label text-[var(--text)]">Category Mixing</label>
+              <span className="label font-semibold text-[var(--accent)]">{Math.round((profile.interleave_category_penalty || 0.6) * 100)}%</span>
+            </div>
             <input
               type="range"
               min="0"
@@ -152,51 +186,61 @@ export default function SettingsPage() {
               step="0.1"
               value={profile.interleave_category_penalty || 0.6}
               onChange={e => setProfile(p => ({ ...p, interleave_category_penalty: parseFloat(e.target.value) }))}
-              style={{ width: '100%' }}
+              className="w-full"
             />
-            <p style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 6 }}>How strongly to avoid repeating the same word category. Higher = better variety.</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-2">Avoid repeating the same word category. Higher = better variety in sessions.</p>
           </div>
 
-          <button className="btn-primary" onClick={save} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: loading ? 0.6 : 1 }}>
-            {loading ? '...' : saved ? <Check size={16} /> : <Save size={16} />}
-            {loading ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
-          </button>
+          <InteractiveButton
+            variant="primary"
+            size="md"
+            onClick={save}
+            isLoading={loading}
+            className="mt-2"
+          >
+            {saved ? <><Check size={16} className="inline mr-2" />Saved!</> : <><Save size={16} className="inline mr-2" />Save Settings</>}
+          </InteractiveButton>
         </div>
-      </div>
+      </SurfaceCard>
 
       {/* Notifications Settings */}
       <NotificationSettings />
 
-      {/* Claude prompts */}
-      <div className="card" style={{ padding: '24px', marginTop: 24 }}>
-        <h3 style={{ fontSize: 18, marginBottom: 6 }}>Claude Chat Prompts</h3>
-        <p style={{ fontSize: 13, color: 'var(--ink-light)', marginBottom: 20 }}>Copy these prompts to use in Claude.ai chat — your free AI engine!</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Claude Prompts */}
+      <SurfaceCard padding="lg">
+        <h3 className="h3 text-[var(--text)] mb-2">Claude Chat Prompts</h3>
+        <p className="text-sm text-[var(--text-secondary)] mb-5">Copy these prompts to use in Claude.ai chat — your free AI helper!</p>
+        <div className="space-y-3">
           {promptSections.map(({ key, title, desc, prompt, input }) => (
-            <div key={key} style={{ background: 'var(--bg)', borderRadius: 10, padding: '16px' }}>
-              <p style={{ fontWeight: 600, marginBottom: 2 }}>{title}</p>
-              <p style={{ fontSize: 12, color: 'var(--ink-light)', marginBottom: 10 }}>{desc}</p>
+            <SurfaceCard key={key} padding="md" className="bg-[var(--bg)]">
+              <h4 className="font-semibold text-[var(--text)] mb-1">{title}</h4>
+              <p className="text-xs text-[var(--text-secondary)] mb-3">{desc}</p>
               {input}
               {prompt && (
-                <div style={{ position: 'relative' }}>
-                  <pre style={{ fontSize: 12, background: 'var(--bg-card)', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 100, overflow: 'hidden', color: 'var(--ink-light)' }}>{prompt.slice(0, 200)}...</pre>
-                  <button onClick={() => copyPrompt(prompt, key)} style={{
-                    position: 'absolute', top: 8, right: 8, background: 'var(--accent)', color: 'white',
-                    border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4
-                  }}>
+                <div className="relative">
+                  <pre className="text-xs bg-[var(--surface)] p-3 rounded border border-[var(--border)] whitespace-pre-wrap word-break-break-word max-h-24 overflow-hidden text-[var(--text-secondary)]">
+                    {prompt.slice(0, 200)}...
+                  </pre>
+                  <button
+                    onClick={() => copyPrompt(prompt, key)}
+                    className="absolute top-2 right-2 px-2 py-1 bg-[var(--accent)] text-white rounded text-xs flex items-center gap-1 hover:opacity-90 transition-opacity"
+                  >
                     {copiedPrompt === key ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
                   </button>
                 </div>
               )}
               {!prompt && !input && (
-                <button onClick={() => copyPrompt(prompt, key)} className="btn-ghost" style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => copyPrompt(prompt, key)}
+                  className="text-xs text-[var(--accent)] hover:text-[var(--accent)]/80 flex items-center gap-1"
+                >
                   <Copy size={12} /> Copy Prompt
                 </button>
               )}
-            </div>
+            </SurfaceCard>
           ))}
         </div>
-      </div>
+      </SurfaceCard>
     </div>
   )
 }
