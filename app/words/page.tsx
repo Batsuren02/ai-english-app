@@ -4,8 +4,12 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import { supabase, Word } from '@/lib/supabase'
-import { Plus, Search, Download, X, ChevronDown, Volume2, Copy, Check } from 'lucide-react'
+import { Plus, Search, Download, X, ChevronDown, Volume2, Copy, Check, Trash2 } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
+
+// V2.0 Components
+import SurfaceCard from '@/components/design/SurfaceCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
 
 // shadcn components
 import { Button }                                          from '@/components/ui/button'
@@ -113,96 +117,131 @@ export default function WordsPage() {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex items-center justify-center h-40 text-[var(--text-secondary)]">
-      Loading words…
+    <div className="flex items-center justify-center h-72">
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+        <p className="text-sm text-[var(--text-secondary)]">Loading words…</p>
+      </div>
     </div>
   )
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="fade-in space-y-6">
+    <div className="fade-in max-w-6xl space-y-6">
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="font-display text-2xl text-[var(--text)]">Word Library</h2>
-          <p className="text-sm text-[var(--text-secondary)] mt-0.5">{words.length} words total</p>
+          <h1 className="h2 text-[var(--text)] mb-2">Word Library</h1>
+          <p className="body text-[var(--text-secondary)]">{words.length} words • Master your vocabulary</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={exportJSON}>
-            <Download size={14} /> Export
-          </Button>
-          <Button size="sm" onClick={() => setShowAdd(true)}>
-            <Plus size={15} /> Add Word
-          </Button>
+          <InteractiveButton
+            variant="secondary"
+            size="md"
+            onClick={exportJSON}
+            className="flex items-center gap-2"
+          >
+            <Download size={16} />
+            Export
+          </InteractiveButton>
+          <InteractiveButton
+            variant="primary"
+            size="md"
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Add Word
+          </InteractiveButton>
         </div>
       </div>
 
       {/* ── Filters ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
-          <Input
-            placeholder="Search words…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-          />
+      <SurfaceCard padding="md" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+        <div className="flex flex-wrap gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
+            <Input
+              placeholder="Search words…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Category filter */}
+          <Select value={filterCat} onValueChange={setFilterCat}>
+            <SelectTrigger className="w-auto min-w-[150px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace('_', ' ')}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {/* Level filter */}
+          <Select value={filterLevel} onValueChange={setFilterLevel}>
+            <SelectTrigger className="w-auto min-w-[130px]">
+              <SelectValue placeholder="All Levels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Levels</SelectItem>
+              {LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-
-        {/* Category filter */}
-        <Select value={filterCat} onValueChange={setFilterCat}>
-          <SelectTrigger className="w-auto min-w-[140px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-
-        {/* Level filter */}
-        <Select value={filterLevel} onValueChange={setFilterLevel}>
-          <SelectTrigger className="w-auto min-w-[120px]">
-            <SelectValue placeholder="All Levels" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
-            {LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+      </SurfaceCard>
 
       {/* ── Word list ────────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
-        <div className="card p-10 text-center text-[var(--text-secondary)]">
-          {words.length === 0 ? 'No words yet. Add your first word!' : 'No words match your filters.'}
-        </div>
+        <SurfaceCard padding="lg" className="text-center py-12">
+          <p className="text-lg text-[var(--text-secondary)] mb-4">
+            {words.length === 0 ? '📚 No words yet' : '🔍 No words match your filters'}
+          </p>
+          <p className="text-sm text-[var(--text-secondary)] mb-6">
+            {words.length === 0 ? 'Add your first word to start building your vocabulary!' : 'Try adjusting your search or filters.'}
+          </p>
+          {words.length === 0 && (
+            <InteractiveButton
+              variant="primary"
+              size="md"
+              onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Add Your First Word
+            </InteractiveButton>
+          )}
+        </SurfaceCard>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 space-y-2">
           {filtered.map(w => (
             <button
               key={w.id}
               className={cn(
-                'card w-full text-left px-4 py-3 cursor-pointer transition-shadow',
+                'w-full text-left px-4 py-3 rounded-lg transition-all',
                 'flex items-center gap-3 hover:shadow-md',
-                selectedWord?.id === w.id && 'ring-2 ring-[var(--accent)] ring-inset'
+                'border border-[var(--border)] bg-[var(--surface)]',
+                'hover:bg-[var(--surface)] hover:border-[var(--accent)]/50',
+                selectedWord?.id === w.id && 'ring-2 ring-[var(--accent)] ring-inset bg-[var(--accent)]/5'
               )}
               onClick={() => setSelectedWord(selectedWord?.id === w.id ? null : w)}
             >
               {/* Word info — min-w-0 prevents flex child overflow */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-[var(--text)] text-base">{w.word}</span>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="font-semibold text-[var(--text)] text-base">{w.word}</span>
                   {w.ipa && (
                     <span className="text-xs text-[var(--text-secondary)] truncate max-w-[120px]">{w.ipa}</span>
                   )}
-                  {w.cefr_level && <Badge>{w.cefr_level}</Badge>}
-                  {w.category   && <Badge variant="purple">{w.category}</Badge>}
+                  {w.cefr_level && <Badge variant="outline" className="text-xs">{w.cefr_level}</Badge>}
+                  {w.category   && <Badge variant="purple" className="text-xs">{w.category.replace('_', ' ')}</Badge>}
                 </div>
                 {/* Definition: single line, truncated — never overflows */}
-                <p className="text-sm text-[var(--text-secondary)] mt-1 truncate">
+                <p className="text-sm text-[var(--text-secondary)] truncate">
                   {w.definition}
                 </p>
               </div>
@@ -235,19 +274,20 @@ export default function WordsPage() {
             'bg-[var(--bg-card)] border-l border-[var(--border)] shadow-xl',
           )}>
             {/* Panel header */}
-            <div className="flex items-start justify-between p-5 pb-3 border-b border-[var(--border)]">
+            <div className="flex items-start justify-between p-6 pb-4 border-b border-[var(--border)]">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="font-display text-2xl text-[var(--text)] flex items-center gap-2 flex-wrap">
+                <h2 className="h3 text-[var(--text)] flex items-center gap-2 flex-wrap">
                   <span className="truncate">{selectedWord.word}</span>
                   <button
                     onClick={() => speak(selectedWord.word)}
-                    className="text-[var(--accent)] hover:opacity-70 transition-opacity flex-shrink-0"
+                    className="p-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all flex-shrink-0"
+                    title="Pronounce"
                   >
-                    <Volume2 size={18} />
+                    <Volume2 size={16} />
                   </button>
                 </h2>
                 {selectedWord.ipa && (
-                  <p className="text-sm text-[var(--text-secondary)] mt-0.5">{selectedWord.ipa}</p>
+                  <p className="label text-[var(--text-secondary)] mt-2">{selectedWord.ipa}</p>
                 )}
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedWord(null)}>
@@ -257,31 +297,31 @@ export default function WordsPage() {
 
             {/* Scrollable body */}
             <ScrollArea className="flex-1">
-              <div className="p-5 space-y-4">
+              <div className="p-6 space-y-6">
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2">
-                  {selectedWord.part_of_speech && <Badge>{selectedWord.part_of_speech}</Badge>}
-                  {selectedWord.cefr_level     && <Badge>{selectedWord.cefr_level}</Badge>}
-                  {selectedWord.category        && <Badge variant="purple">{selectedWord.category}</Badge>}
+                  {selectedWord.part_of_speech && <Badge variant="outline" className="text-xs">{selectedWord.part_of_speech}</Badge>}
+                  {selectedWord.cefr_level     && <Badge className="text-xs bg-blue-100 text-blue-700">{selectedWord.cefr_level}</Badge>}
+                  {selectedWord.category        && <Badge variant="purple" className="text-xs">{selectedWord.category.replace('_', ' ')}</Badge>}
                 </div>
 
                 {/* Definition */}
                 <div>
-                  <p className="text-base text-[var(--text)] leading-relaxed">{selectedWord.definition}</p>
+                  <p className="body text-[var(--text)] leading-relaxed">{selectedWord.definition}</p>
                   {selectedWord.mongolian && (
-                    <p className="text-sm text-[var(--text-secondary)] italic mt-1">{selectedWord.mongolian}</p>
+                    <p className="text-sm text-[var(--text-secondary)] italic mt-3">{selectedWord.mongolian}</p>
                   )}
                 </div>
 
                 {/* Examples */}
                 {(selectedWord.examples as string[] || []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                    <p className="label text-[var(--text-secondary)] mb-3 uppercase tracking-wide">
                       Examples
-                    </h4>
-                    <div className="space-y-1">
+                    </p>
+                    <div className="space-y-2">
                       {(selectedWord.examples as string[]).map((ex, i) => (
-                        <p key={i} className="text-sm text-[var(--text)] italic border-b border-[var(--border)] pb-1">
+                        <p key={i} className="text-sm text-[var(--text)] italic px-3 py-2 bg-[var(--bg)] rounded border-l-2 border-[var(--accent)]">
                           "{ex}"
                         </p>
                       ))}
@@ -292,23 +332,20 @@ export default function WordsPage() {
                 {/* Collocations */}
                 {(selectedWord.collocations as string[] || []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                    <p className="label text-[var(--text-secondary)] mb-3 uppercase tracking-wide">
                       Collocations
-                    </h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(selectedWord.collocations as string[]).map(c => <Badge key={c}>{c}</Badge>)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(selectedWord.collocations as string[]).map(c => <Badge key={c} variant="outline" className="text-xs">{c}</Badge>)}
                     </div>
                   </div>
                 )}
 
                 {/* Memory hint */}
                 {selectedWord.etymology_hint && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                      Memory Hint
-                    </h4>
-                    <p className="text-sm text-[var(--text)] bg-[var(--surface)] rounded-lg p-3 leading-relaxed">
-                      {selectedWord.etymology_hint}
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
+                    <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed">
+                      💡 {selectedWord.etymology_hint}
                     </p>
                   </div>
                 )}
@@ -316,10 +353,16 @@ export default function WordsPage() {
             </ScrollArea>
 
             {/* Panel footer */}
-            <div className="p-4 border-t border-[var(--border)]">
-              <Button variant="danger" className="w-full" onClick={() => deleteWord(selectedWord.id)}>
+            <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)]">
+              <InteractiveButton
+                variant="danger"
+                size="md"
+                className="w-full flex items-center justify-center gap-2"
+                onClick={() => deleteWord(selectedWord.id)}
+              >
+                <Trash2 size={16} />
                 Delete Word
-              </Button>
+              </InteractiveButton>
             </div>
           </aside>
         </>
@@ -327,28 +370,28 @@ export default function WordsPage() {
 
       {/* ── Add Word Dialog ──────────────────────────────────────────────── */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add New Word</DialogTitle>
+            <DialogTitle className="h3 text-[var(--text)]">Add New Word</DialogTitle>
           </DialogHeader>
 
-          <Tabs defaultValue="json">
-            <TabsList>
+          <Tabs defaultValue="json" className="w-full">
+            <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="json">Paste Claude JSON</TabsTrigger>
               <TabsTrigger value="manual">Manual Entry</TabsTrigger>
             </TabsList>
 
             {/* ── JSON tab ── */}
-            <TabsContent value="json" className="space-y-4">
+            <TabsContent value="json" className="space-y-4 mt-4">
               {/* Prompt helper */}
-              <div className="rounded-lg bg-[var(--surface)] p-4 space-y-2">
-                <p className="text-xs text-[var(--text-secondary)]">Generate a word card prompt for Claude:</p>
-                <div className="flex gap-2 flex-wrap">
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-4 space-y-3 border border-blue-200 dark:border-blue-900">
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">Generate a word card prompt for Claude:</p>
+                <div className="flex gap-2">
                   <Input
                     placeholder="Enter a word…"
                     value={importWord}
                     onChange={e => setImportWord(e.target.value)}
-                    className="flex-1 min-w-[120px]"
+                    className="flex-1"
                   />
                   <Button
                     variant="ghost"
@@ -356,33 +399,39 @@ export default function WordsPage() {
                     onClick={() => copyPrompt(importWord)}
                     className="flex-shrink-0"
                   >
-                    {copied === importWord ? <Check size={13} className="text-green-600" /> : <Copy size={13} />}
-                    {copied === importWord ? 'Copied!' : 'Copy Prompt'}
+                    {copied === importWord ? (
+                      <><Check size={14} className="text-green-600" /></>
+                    ) : (
+                      <><Copy size={14} /></>
+                    )}
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <p className="text-xs text-[var(--text-secondary)]">Paste Claude's JSON response:</p>
+              <div className="space-y-2">
+                <label className="label text-[var(--text)]">Paste Claude's JSON response:</label>
                 <Textarea
                   rows={8}
                   placeholder={'{"word": "example", "definition": "...", ...}'}
                   value={jsonInput}
                   onChange={e => setJsonInput(e.target.value)}
+                  className="font-mono text-xs"
                 />
               </div>
 
-              <Button
+              <InteractiveButton
+                variant="primary"
+                size="md"
                 className="w-full"
                 onClick={saveWordFromJSON}
-                disabled={!jsonInput || saving}
+                isLoading={saving}
               >
-                {saving ? 'Saving…' : 'Save Word(s)'}
-              </Button>
+                {saving ? 'Saving...' : 'Save Word(s)'}
+              </InteractiveButton>
             </TabsContent>
 
             {/* ── Manual tab ── */}
-            <TabsContent value="manual" className="space-y-3">
+            <TabsContent value="manual" className="space-y-4 mt-4">
               {([
                 { key: 'word',          label: 'Word *',         placeholder: 'e.g. eloquent'           },
                 { key: 'definition',    label: 'Definition *',   placeholder: 'English definition…'     },
@@ -390,8 +439,8 @@ export default function WordsPage() {
                 { key: 'part_of_speech',label: 'Part of Speech', placeholder: 'noun, verb, adjective…'  },
                 { key: 'ipa',           label: 'IPA',            placeholder: '/ɛləkwənt/'               },
               ] as const).map(({ key, label, placeholder }) => (
-                <div key={key} className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--text)]">{label}</label>
+                <div key={key} className="space-y-2">
+                  <label className="label text-[var(--text)]">{label}</label>
                   <Input
                     placeholder={placeholder}
                     value={(manualWord as any)[key]}
@@ -400,9 +449,9 @@ export default function WordsPage() {
                 </div>
               ))}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--text)]">CEFR Level</label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="label text-[var(--text)]">CEFR Level</label>
                   <Select value={manualWord.cefr_level} onValueChange={v => setManualWord(p => ({ ...p, cefr_level: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -410,24 +459,26 @@ export default function WordsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--text)]">Category</label>
+                <div className="space-y-2">
+                  <label className="label text-[var(--text)]">Category</label>
                   <Select value={manualWord.category} onValueChange={v => setManualWord(p => ({ ...p, category: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace('_', ' ')}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <Button
-                className="w-full mt-1"
+              <InteractiveButton
+                variant="primary"
+                size="md"
+                className="w-full"
                 onClick={saveManualWord}
-                disabled={!manualWord.word || !manualWord.definition || saving}
+                isLoading={saving}
               >
-                {saving ? 'Saving…' : 'Save Word'}
-              </Button>
+                {saving ? 'Saving...' : 'Save Word'}
+              </InteractiveButton>
             </TabsContent>
           </Tabs>
         </DialogContent>
