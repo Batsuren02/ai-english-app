@@ -141,37 +141,40 @@ export default function LearnPage() {
   }
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (showDetails) return // Don't swipe while card is flipped
+    if (showDetails) return
     touchStartX.current = e.touches[0].clientX
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (!cardRef.current || showDetails) return
+    if (showDetails || !touchStartX.current) return
     const currentX = e.touches[0].clientX
     const diff = currentX - touchStartX.current
-    const threshold = 40 // Reduced threshold for better sensitivity
 
-    if (diff < -threshold) {
-      setSwipeState('left')
-    } else if (diff > threshold) {
-      setSwipeState('right')
+    if (Math.abs(diff) > 30) {
+      if (diff < 0) {
+        setSwipeState('left')
+      } else {
+        setSwipeState('right')
+      }
     } else {
       setSwipeState('idle')
     }
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (!cardRef.current || showDetails) return
+    if (showDetails || !touchStartX.current) return
+
     const currentX = e.changedTouches[0].clientX
     const diff = currentX - touchStartX.current
-    const threshold = 60 // Lower threshold = easier to trigger
 
-    if (diff < -threshold) {
+    if (diff < -50) {
       autoRateWord('left')
-    } else if (diff > threshold) {
+    } else if (diff > 50) {
       autoRateWord('right')
     }
+
     setSwipeState('idle')
+    touchStartX.current = 0
   }
 
   if (loading) return (
@@ -303,24 +306,25 @@ export default function LearnPage() {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative h-[500px] cursor-grab active:cursor-grabbing transition-all duration-300 rounded-2xl ${
+        className={`relative w-full h-[500px] cursor-grab active:cursor-grabbing transition-all duration-300 rounded-2xl select-none ${
           swipeState === 'left' ? '-translate-x-full opacity-0' : swipeState === 'right' ? 'translate-x-full opacity-0' : ''
         }`}
-        style={{ perspective: '1000px' }}
+        style={{ perspective: '1000px', touchAction: 'none' }}
       >
         {/* Card Flip Container */}
         <div
-          className="relative w-full h-full transition-transform duration-500"
+          className="relative w-full h-full transition-transform duration-500 select-none"
           style={{
             transformStyle: 'preserve-3d',
             transform: showDetails ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            touchAction: 'none',
           }}
           onClick={() => setShowDetails(!showDetails)}
         >
           {/* Front of Card - Word Display */}
           <div
-            className="absolute w-full h-full"
-            style={{ backfaceVisibility: 'hidden' }}
+            className="absolute w-full h-full select-none"
+            style={{ backfaceVisibility: 'hidden', touchAction: 'none' }}
           >
             <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
           {/* Top Right Badge */}
@@ -376,8 +380,8 @@ export default function LearnPage() {
 
           {/* Back of Card - Details */}
           <div
-            className="absolute w-full h-full"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+            className="absolute w-full h-full select-none"
+            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', touchAction: 'none' }}
           >
             <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col bg-gradient-to-br from-indigo-500/10 to-blue-500/10">
               {/* Back Card Header */}
