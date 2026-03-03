@@ -2,14 +2,12 @@
 import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
 import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Menu, Upload, FileText, Mic2, Zap } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import PWAInstallPrompt from '@/components/PWAInstallPrompt'
-import XPPopup from '@/components/XPPopup'
 import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/lib/theme-context'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
@@ -67,25 +65,6 @@ function SidebarHeader() {
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sheetOpen, setSheetOpen] = useState(false)
-
-  // Load user's font preference on mount
-  useEffect(() => {
-    async function loadFontPreference() {
-      try {
-        const { data: profile } = await supabase.from('user_profile').select('font_family').single()
-        if (profile?.font_family === 'monospace') {
-          document.documentElement.style.setProperty('--active-font', "var(--font-monospace)")
-        } else {
-          document.documentElement.style.setProperty('--active-font', "var(--font-body)")
-        }
-      } catch (err) {
-        // Default to serif if not found
-        document.documentElement.style.setProperty('--active-font', "var(--font-body)")
-      }
-    }
-    loadFontPreference()
-  }, [])
-
   return (
     <ToastProvider>
       <div className="flex min-h-screen bg-[var(--bg)]">
@@ -133,9 +112,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
-
-      {/* XP Popup Notifications */}
-      <XPPopup />
     </ToastProvider>
   )
 }

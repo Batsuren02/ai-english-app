@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word, Review } from '@/lib/supabase'
 import Link from 'next/link'
-import { Brain, BookMarked, Flame, Star, TrendingUp, Zap, ChevronRight, AlertTriangle, FileText, Mic2 } from 'lucide-react'
+import { Brain, BookMarked, Flame, TrendingUp, Zap, ChevronRight, AlertTriangle, FileText, Mic2 } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
 import StatCard from '@/components/design/StatCard'
 import SurfaceCard from '@/components/design/SurfaceCard'
@@ -67,9 +67,6 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  const xpForNextLevel = (profile?.level || 1) * 100
-  const xpProgress = profile ? (profile.total_xp % xpForNextLevel) / xpForNextLevel * 100 : 0
-
   if (loading) return (
     <div className="flex items-center justify-center h-72">
       <TextSecondary className="italic">Loading your progress...</TextSecondary>
@@ -91,21 +88,7 @@ export default function Dashboard() {
         <StatCard icon={<Brain size={24} />} label="Due Today" value={dueCount} color={dueCount > 0 ? 'var(--accent)' : 'var(--success)'} />
         <StatCard icon={<BookMarked size={24} />} label="Total Words" value={totalWords} color="var(--accent)" />
         <StatCard icon={<Flame size={24} />} label="Streak" value={`${profile?.current_streak || 0}d`} color="#dc2626" />
-        <StatCard icon={<Star size={24} />} label="XP" value={profile?.total_xp || 0} color="#9333ea" />
       </div>
-
-      {/* XP Progress */}
-      {profile && (
-        <SurfaceCard padding="md" className="mb-6">
-          <div className="flex justify-between mb-2 text-sm">
-            <TextPrimary className="font-semibold">Level {profile.level}</TextPrimary>
-            <TextSecondary className="text-xs">{profile.total_xp % xpForNextLevel} / {xpForNextLevel} XP</TextSecondary>
-          </div>
-          <div className="w-full h-2 bg-[var(--border)] rounded overflow-hidden">
-            <div className="h-full bg-purple-500 rounded transition-all duration-500" style={{ width: `${xpProgress}%` }} />
-          </div>
-        </SurfaceCard>
-      )}
 
       {/* Daily Challenge */}
       <div className="mb-8">

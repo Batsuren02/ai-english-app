@@ -61,8 +61,6 @@ export type UserProfile = {
   daily_target_minutes: number
   current_streak: number
   longest_streak: number
-  total_xp: number
-  level: number
   weak_patterns: string[]
   preferred_quiz_types: string[]
   active_hours: number[]
@@ -72,7 +70,6 @@ export type UserProfile = {
   notification_hour: number
   quiet_hours_start: number
   quiet_hours_end: number
-  font_family?: string
   updated_at: string
 }
 

@@ -119,12 +119,6 @@ export default function LearnPage() {
       source: 'quiz'
     })
 
-    // XP
-    if (quality >= 3) {
-      const { data: prof } = await supabase.from('user_profile').select('id, total_xp').single()
-      if (prof) await supabase.from('user_profile').update({ total_xp: (prof.total_xp || 0) + (quality >= 4 ? 10 : 5) }).eq('id', prof.id)
-    }
-
     setResults(prev => [...prev, { word: current, quality, correct: quality >= 3 }])
 
     if (currentIdx + 1 >= dueWords.length) {
@@ -151,7 +145,6 @@ export default function LearnPage() {
   if (sessionDone) {
     const correct = results.filter(r => r.correct).length
     const accuracy = Math.round(correct / results.length * 100)
-    const xpEarned = results.filter(r => r.correct).reduce((a, r) => a + (r.quality >= 4 ? 10 : 5), 0)
     return (
       <div className="fade-in max-w-md mx-auto text-center">
         <div className="flex justify-center mb-3">
@@ -159,12 +152,11 @@ export default function LearnPage() {
         </div>
         <TextPrimary className="text-3xl font-bold mb-1">Session Complete!</TextPrimary>
         <TextSecondary className="text-sm mb-7">Great work on your review.</TextSecondary>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 28 }}>
           {[
             { label: 'Words', value: results.length },
             { label: 'Correct', value: correct },
             { label: 'Accuracy', value: `${accuracy}%` },
-            { label: 'XP', value: `+${xpEarned}` },
           ].map(({ label, value }) => (
             <SurfaceCard key={label} padding="sm" className="text-center">
               <TextPrimary className="text-xl font-bold text-[var(--accent)]">{value}</TextPrimary>

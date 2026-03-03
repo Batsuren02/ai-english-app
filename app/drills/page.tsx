@@ -152,14 +152,6 @@ export default function DrillsPage() {
       user_answer: userAnswer,
       source: 'drill',
     })
-
-    // Award XP for correct answers
-    if (correct) {
-      const { data: prof } = await supabase.from('user_profile').select('id, total_xp').single()
-      if (prof) {
-        await supabase.from('user_profile').update({ total_xp: (prof.total_xp || 0) + 10 }).eq('id', prof.id)
-      }
-    }
   }
 
   const handleNextQuestion = () => {

@@ -155,7 +155,6 @@ export default function StatsPage() {
           { icon: TrendingUp, label: 'Reviews (30d)', value: totalReviews, color: '#7c3aed' },
           { icon: Target, label: 'Accuracy', value: `${avgAccuracy}%`, color: avgAccuracy >= 80 ? '#16a34a' : '#d97706' },
           { icon: Flame, label: 'Streak', value: `${profile?.current_streak || 0}d`, color: '#dc2626' },
-          { icon: Zap, label: 'Total XP', value: profile?.total_xp || 0, color: '#d97706' },
         ].map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="card" style={{ padding: '16px', textAlign: 'center' }}>
             <Icon size={20} style={{ color, margin: '0 auto 6px' }} />

@@ -70,12 +70,6 @@ export default function PronunciationPage() {
           feedback: null,
           similarity_score: null,
         })
-
-        // Award XP for practicing pronunciation
-        const { data: prof } = await supabase.from('user_profile').select('id, total_xp').single()
-        if (prof) {
-          await supabase.from('user_profile').update({ total_xp: (prof.total_xp || 0) + 5 }).eq('id', prof.id)
-        }
       }
     } catch (err) {
       console.error('Failed to complete recording:', err)
