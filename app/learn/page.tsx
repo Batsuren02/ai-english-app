@@ -6,9 +6,11 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
 import { interleaveWords, parseInterleaveConfig } from '@/lib/interleaving'
-import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame } from 'lucide-react'
+import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame, Zap } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
+import EmptyState from '@/components/design/EmptyState'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 type WordWithReview = Word & { review: Review; isNew?: boolean }
@@ -130,52 +132,91 @@ export default function LearnPage() {
     }
   }
 
-  if (loading) return <div className="py-16 text-center"><TextSecondary>Loading review session...</TextSecondary></div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-72">
+      <TextSecondary className="italic">Loading your review session...</TextSecondary>
+    </div>
+  )
 
   if (dueWords.length === 0) return (
-    <div className="fade-in text-center py-16">
-      <div className="flex justify-center mb-4">
-        <CheckCircle size={52} className="text-green-600" />
-      </div>
-      <TextPrimary className="text-xl font-bold mb-2">All caught up! 🎉</TextPrimary>
-      <TextSecondary className="text-sm">No words due for review. Come back tomorrow!</TextSecondary>
-    </div>
+    <EmptyState
+      icon={<CheckCircle size={56} className="text-green-600" />}
+      title="All caught up! 🎉"
+      description="No words due for review today. You're doing great! Come back tomorrow."
+      animated={false}
+    />
   )
 
   if (sessionDone) {
     const correct = results.filter(r => r.correct).length
     const accuracy = Math.round(correct / results.length * 100)
     return (
-      <div className="fade-in max-w-md mx-auto text-center">
-        <div className="flex justify-center mb-3">
-          <Award size={56} className="text-[var(--accent)]" />
+      <div className="fade-in max-w-2xl mx-auto space-y-6">
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <Award size={64} className="text-[var(--accent)]" />
+          </div>
+          <h1 className="h2 text-[var(--text)] mb-2">Session Complete! 🎉</h1>
+          <p className="body text-[var(--text-secondary)]">Great work on your review session.</p>
         </div>
-        <TextPrimary className="text-3xl font-bold mb-1">Session Complete!</TextPrimary>
-        <TextSecondary className="text-sm mb-7">Great work on your review.</TextSecondary>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 28 }}>
-          {[
-            { label: 'Words', value: results.length },
-            { label: 'Correct', value: correct },
-            { label: 'Accuracy', value: `${accuracy}%` },
-          ].map(({ label, value }) => (
-            <SurfaceCard key={label} padding="sm" className="text-center">
-              <TextPrimary className="text-xl font-bold text-[var(--accent)]">{value}</TextPrimary>
-              <TextSecondary className="text-[10px]">{label}</TextSecondary>
-            </SurfaceCard>
-          ))}
+
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            label="Reviewed"
+            value={results.length}
+            color="var(--accent)"
+          />
+          <StatCard
+            label="Correct"
+            value={correct}
+            color="var(--success)"
+            trend={{ direction: 'up', percent: correct }}
+          />
+          <StatCard
+            label="Accuracy"
+            value={`${accuracy}%`}
+            color="var(--accent)"
+          />
         </div>
-        <div className="text-left mb-6">
-          {results.map(({ word, correct }, i) => (
-            <div key={i} className="flex items-center gap-2.5 py-1.5 border-b border-[var(--border)]">
-              {correct ? <CheckCircle size={15} className="text-green-600 flex-shrink-0" /> : <XCircle size={15} className="text-red-600 flex-shrink-0" />}
-              <TextPrimary className="font-semibold text-sm">{word.word}</TextPrimary>
-              <TextSecondary className="text-xs line-clamp-1">{word.definition?.slice(0, 48)}</TextSecondary>
-            </div>
-          ))}
+
+        <SurfaceCard padding="lg">
+          <h3 className="h4 text-[var(--text)] mb-4">Review History</h3>
+          <div className="space-y-2">
+            {results.map(({ word, correct }, i) => (
+              <div key={i} className="flex items-center gap-3 py-2 border-b border-[var(--border)] last:border-0">
+                <div className="flex-shrink-0">
+                  {correct ? (
+                    <CheckCircle size={18} className="text-[var(--success)]" />
+                  ) : (
+                    <XCircle size={18} className="text-[var(--error)]" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[var(--text)] text-sm">{word.word}</p>
+                  <p className="text-xs text-[var(--text-secondary)] line-clamp-1">{word.definition?.slice(0, 60)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SurfaceCard>
+
+        <div className="text-center">
+          <InteractiveButton
+            variant="primary"
+            size="lg"
+            onClick={() => {
+              setDueWords([])
+              setResults([])
+              setCurrentIdx(0)
+              setSessionDone(false)
+              setLoading(true)
+              loadDueWords()
+            }}
+          >
+            <RotateCcw size={16} className="inline mr-2" />
+            Start New Session
+          </InteractiveButton>
         </div>
-        <button className="btn-primary mx-auto flex items-center gap-1.5" onClick={() => { setDueWords([]); setResults([]); setCurrentIdx(0); setSessionDone(false); setLoading(true); loadDueWords() }}>
-          <RotateCcw size={14} /> New Session
-        </button>
       </div>
     )
   }
@@ -183,93 +224,134 @@ export default function LearnPage() {
   const examples = current.examples as string[] || []
   const totalLeft = dueWords.length - currentIdx
 
+  const progressPercent = (currentIdx / dueWords.length) * 100
+  const ratingOptions = [
+    { q: 0, label: 'Again', sub: '< 1d', color: 'error', bg: 'rgba(239, 68, 68, 0.1)', border: '#ef4444' },
+    { q: 2, label: 'Hard', sub: '~1d', color: 'warning', bg: 'rgba(217, 119, 6, 0.1)', border: '#d97706' },
+    { q: 4, label: 'Good', sub: `~${current.review.interval_days}d`, color: 'info', bg: 'rgba(59, 130, 246, 0.1)', border: '#3b82f6' },
+    { q: 5, label: 'Easy', sub: `~${Math.max(1, current.review.interval_days * 2)}d`, color: 'success', bg: 'rgba(34, 197, 94, 0.1)', border: '#22c55e' },
+  ]
+
   return (
-    <div className="fade-in max-w-xl mx-auto">
-      {/* Header stats */}
-      <div className="flex gap-4 mb-5 text-xs items-center">
-        <span className="flex items-center gap-1"><BookOpen size={13} className="text-[var(--text-secondary)]" /> <TextSecondary>{dueCount} due</TextSecondary></span>
-        {newCount > 0 && <span className="flex items-center gap-1 text-blue-500">✨ <TextSecondary className="text-blue-500">{newCount} new</TextSecondary></span>}
-        <span className="ml-auto flex items-center gap-1"><Flame size={13} className="text-amber-600" /> <TextSecondary>{results.filter(r => r.correct).length} streak</TextSecondary></span>
+    <div className="fade-in max-w-2xl mx-auto space-y-6">
+      {/* Session Stats Header */}
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <BookOpen size={16} className="text-[var(--text-secondary)]" />
+            <span className="body text-[var(--text-secondary)]">{dueCount} due</span>
+          </div>
+          {newCount > 0 && (
+            <div className="flex items-center gap-1.5 text-blue-500">
+              <span>✨</span>
+              <span className="body">{newCount} new</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Flame size={16} className="text-amber-600" />
+          <span className="body font-semibold text-amber-600">{results.filter(r => r.correct).length} correct</span>
+        </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-xs mb-1">
-          <TextSecondary>{currentIdx + 1} / {dueWords.length}</TextSecondary>
-          <TextSecondary>{Math.round((currentIdx / dueWords.length) * 100)}%</TextSecondary>
+      {/* Progress Bar */}
+      <div>
+        <div className="flex justify-between items-center mb-2">
+          <span className="label text-[var(--text-secondary)]">{currentIdx + 1} of {dueWords.length}</span>
+          <span className="label font-semibold text-[var(--accent)]">{Math.round(progressPercent)}%</span>
         </div>
-        <div className="w-full h-1.5 bg-[var(--border)] rounded overflow-hidden">
-          <div className="h-full bg-[var(--accent)] rounded transition-all duration-300" style={{ width: `${(currentIdx / dueWords.length) * 100}%` }} />
+        <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/60 rounded-full transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
 
-      {/* Word card */}
-      <SurfaceCard padding="lg" className="text-center relative mb-4">
+      {/* Word Card */}
+      <SurfaceCard padding="lg" hover elevation="md" className="text-center relative">
         {current.isNew && (
-          <span className="absolute top-3.5 right-4 bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full">NEW WORD</span>
+          <span className="absolute top-4 right-4 badge bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1">NEW</span>
         )}
-        <div className="flex items-center justify-center gap-3 mb-1">
-          <TextPrimary className="text-5xl font-display font-bold">{current.word}</TextPrimary>
-          <button onClick={() => speak(current.word)} className="bg-none border-none cursor-pointer text-[var(--accent)] hover:opacity-70">
+
+        <div className="flex items-center justify-center gap-4 mb-3">
+          <h1 className="text-6xl font-display font-bold text-[var(--text)]">{current.word}</h1>
+          <button
+            onClick={() => speak(current.word)}
+            className="p-2 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all"
+            title="Pronounce"
+          >
             <Volume2 size={24} />
           </button>
         </div>
-        {current.ipa && <TextSecondary className="text-base mb-5">{current.ipa}</TextSecondary>}
+
+        {current.ipa && <p className="body text-[var(--text-secondary)] mb-6">{current.ipa}</p>}
 
         {!showAnswer ? (
-          <button className="btn-primary text-base py-3 px-9" onClick={() => { setShowAnswer(true); speak(current.word) }}>
+          <InteractiveButton
+            variant="primary"
+            size="lg"
+            onClick={() => {
+              setShowAnswer(true)
+              speak(current.word)
+            }}
+          >
             Show Answer
-          </button>
+          </InteractiveButton>
         ) : (
-          <div className="fade-in">
-            <SurfaceCard padding="md" className="text-left mb-3 bg-[var(--bg)]">
-              <div className="flex gap-1.5 mb-2">
-                {current.part_of_speech && <span className="badge text-xs">{current.part_of_speech}</span>}
-                {current.cefr_level && <span className="badge text-xs bg-indigo-100 text-indigo-700">{current.cefr_level}</span>}
+          <div className="fade-in space-y-4">
+            {/* Definition Card */}
+            <SurfaceCard padding="md" className="text-left bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {current.part_of_speech && (
+                  <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-2.5 py-1 rounded">{current.part_of_speech}</span>
+                )}
+                {current.cefr_level && (
+                  <span className="label bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded">{current.cefr_level}</span>
+                )}
               </div>
-              <TextPrimary className="text-base font-semibold mt-1.5">{current.definition}</TextPrimary>
-              {current.mongolian && <TextSecondary className="mt-1.5 text-sm italic">{current.mongolian}</TextSecondary>}
+              <p className="font-semibold text-[var(--text)] mb-2">{current.definition}</p>
+              {current.mongolian && (
+                <p className="text-sm text-[var(--text-secondary)] italic">{current.mongolian}</p>
+              )}
             </SurfaceCard>
+
+            {/* Example */}
             {examples.length > 0 && (
-              <div className="text-left mb-2">
-                <TextSecondary className="text-xs mb-1">Example:</TextSecondary>
-                <TextPrimary className="text-sm italic">"{examples[0]}"</TextPrimary>
+              <div className="text-left">
+                <p className="label text-[var(--text-secondary)] mb-2">Example:</p>
+                <p className="body text-[var(--text)] italic">"{examples[0]}"</p>
               </div>
             )}
+
+            {/* Etymology */}
             {current.etymology_hint && (
-              <div className="text-left p-3 bg-amber-50 rounded-lg mt-2.5 text-xs text-[var(--text)]">
-                💡 {current.etymology_hint}
+              <div className="text-left p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
+                <p className="text-sm text-amber-900 dark:text-amber-100">💡 {current.etymology_hint}</p>
               </div>
             )}
           </div>
         )}
       </SurfaceCard>
 
-      {/* Rating */}
+      {/* Rating Buttons */}
       {showAnswer && (
-        <div className="fade-in">
-          <TextSecondary className="text-center text-xs mb-2.5 block">How well did you remember?</TextSecondary>
+        <div className="fade-in space-y-3">
+          <p className="label text-center text-[var(--text-secondary)]">How well did you remember?</p>
           <div className="grid grid-cols-4 gap-2">
-            {[
-              { q: 0, label: 'Again', sub: '< 1d', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
-              { q: 2, label: 'Hard', sub: '~1d', color: '#d97706', bg: 'rgba(217, 119, 6, 0.1)' },
-              { q: 4, label: 'Good', sub: `~${current.review.interval_days}d`, color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
-              { q: 5, label: 'Easy', sub: `~${Math.max(1, current.review.interval_days * 2)}d`, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' },
-            ].map(({ q, label, sub, color, bg }) => (
+            {ratingOptions.map(({ q, label, sub, bg, border }) => (
               <button
                 key={q}
                 onClick={() => rateWord(q)}
-                className="py-2.5 px-1.5 rounded-lg border-2 font-bold cursor-pointer text-xs flex flex-col items-center gap-0.5 hover:shadow-md transition-all active:scale-95"
+                className="py-3 px-2 rounded-lg border-2 font-semibold cursor-pointer text-xs flex flex-col items-center gap-1 transition-all duration-150 hover:shadow-md active:scale-95"
                 style={{
-                  borderColor: color,
-                  background: bg,
-                  color,
+                  borderColor: border,
+                  backgroundColor: bg,
+                  color: border,
                 }}
-                onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
-                onMouseUp={e => (e.currentTarget.style.transform = '')}
               >
-                <span>{label}</span>
-                <span className="text-[9px] opacity-75 font-normal">{sub}</span>
+                <span className="font-bold">{label}</span>
+                <span className="text-[10px] opacity-70 font-normal">{sub}</span>
               </button>
             ))}
           </div>
