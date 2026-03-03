@@ -7,6 +7,9 @@ import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
 import { interleaveWords, parseInterleaveConfig } from '@/lib/interleaving'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame } from 'lucide-react'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import StatCard from '@/components/design/StatCard'
+import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 type WordWithReview = Word & { review: Review; isNew?: boolean }
 type SessionResult = { word: Word; quality: number; correct: boolean }
@@ -133,13 +136,15 @@ export default function LearnPage() {
     }
   }
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--ink-light)' }}>Loading review session...</div>
+  if (loading) return <div className="py-16 text-center"><TextSecondary>Loading review session...</TextSecondary></div>
 
   if (dueWords.length === 0) return (
-    <div className="fade-in" style={{ textAlign: 'center', padding: 60 }}>
-      <CheckCircle size={52} style={{ color: '#16a34a', margin: '0 auto 16px' }} />
-      <h2 style={{ marginBottom: 8 }}>All caught up! 🎉</h2>
-      <p style={{ color: 'var(--ink-light)' }}>No words due for review. Come back tomorrow!</p>
+    <div className="fade-in text-center py-16">
+      <div className="flex justify-center mb-4">
+        <CheckCircle size={52} className="text-green-600" />
+      </div>
+      <TextPrimary className="text-xl font-bold mb-2">All caught up! 🎉</TextPrimary>
+      <TextSecondary className="text-sm">No words due for review. Come back tomorrow!</TextSecondary>
     </div>
   )
 
@@ -148,10 +153,12 @@ export default function LearnPage() {
     const accuracy = Math.round(correct / results.length * 100)
     const xpEarned = results.filter(r => r.correct).reduce((a, r) => a + (r.quality >= 4 ? 10 : 5), 0)
     return (
-      <div className="fade-in" style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
-        <Award size={56} style={{ color: 'var(--accent)', margin: '0 auto 12px' }} />
-        <h2 style={{ fontSize: 28, marginBottom: 4 }}>Session Complete!</h2>
-        <p style={{ color: 'var(--ink-light)', marginBottom: 28 }}>Great work on your review.</p>
+      <div className="fade-in max-w-md mx-auto text-center">
+        <div className="flex justify-center mb-3">
+          <Award size={56} className="text-[var(--accent)]" />
+        </div>
+        <TextPrimary className="text-3xl font-bold mb-1">Session Complete!</TextPrimary>
+        <TextSecondary className="text-sm mb-7">Great work on your review.</TextSecondary>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 28 }}>
           {[
             { label: 'Words', value: results.length },
@@ -159,22 +166,22 @@ export default function LearnPage() {
             { label: 'Accuracy', value: `${accuracy}%` },
             { label: 'XP', value: `+${xpEarned}` },
           ].map(({ label, value }) => (
-            <div key={label} className="card" style={{ padding: '14px 8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--accent)' }}>{value}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-light)' }}>{label}</div>
-            </div>
+            <SurfaceCard key={label} padding="sm" className="text-center">
+              <TextPrimary className="text-xl font-bold text-[var(--accent)]">{value}</TextPrimary>
+              <TextSecondary className="text-[10px]">{label}</TextSecondary>
+            </SurfaceCard>
           ))}
         </div>
-        <div style={{ textAlign: 'left', marginBottom: 24 }}>
+        <div className="text-left mb-6">
           {results.map(({ word, correct }, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-              {correct ? <CheckCircle size={15} color="#16a34a" /> : <XCircle size={15} color="#dc2626" />}
-              <span style={{ fontWeight: 600, fontSize: 15 }}>{word.word}</span>
-              <span style={{ color: 'var(--ink-light)', fontSize: 13 }}>{word.definition?.slice(0, 48)}</span>
+            <div key={i} className="flex items-center gap-2.5 py-1.5 border-b border-[var(--border)]">
+              {correct ? <CheckCircle size={15} className="text-green-600 flex-shrink-0" /> : <XCircle size={15} className="text-red-600 flex-shrink-0" />}
+              <TextPrimary className="font-semibold text-sm">{word.word}</TextPrimary>
+              <TextSecondary className="text-xs line-clamp-1">{word.definition?.slice(0, 48)}</TextSecondary>
             </div>
           ))}
         </div>
-        <button className="btn-primary" onClick={() => { setDueWords([]); setResults([]); setCurrentIdx(0); setSessionDone(false); setLoading(true); loadDueWords() }} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 auto' }}>
+        <button className="btn-primary mx-auto flex items-center gap-1.5" onClick={() => { setDueWords([]); setResults([]); setCurrentIdx(0); setSessionDone(false); setLoading(true); loadDueWords() }}>
           <RotateCcw size={14} /> New Session
         </button>
       </div>
@@ -185,84 +192,92 @@ export default function LearnPage() {
   const totalLeft = dueWords.length - currentIdx
 
   return (
-    <div className="fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div className="fade-in max-w-xl mx-auto">
       {/* Header stats */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 20, fontSize: 13, color: 'var(--ink-light)', alignItems: 'center' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} /> {dueCount} due</span>
-        {newCount > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#2563eb' }}>✨ {newCount} new</span>}
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}><Flame size={13} color="#d97706" /> {results.filter(r => r.correct).length} streak</span>
+      <div className="flex gap-4 mb-5 text-xs items-center">
+        <span className="flex items-center gap-1"><BookOpen size={13} className="text-[var(--text-secondary)]" /> <TextSecondary>{dueCount} due</TextSecondary></span>
+        {newCount > 0 && <span className="flex items-center gap-1 text-blue-500">✨ <TextSecondary className="text-blue-500">{newCount} new</TextSecondary></span>}
+        <span className="ml-auto flex items-center gap-1"><Flame size={13} className="text-amber-600" /> <TextSecondary>{results.filter(r => r.correct).length} streak</TextSecondary></span>
       </div>
 
       {/* Progress bar */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-light)', marginBottom: 5 }}>
-          <span>{currentIdx + 1} / {dueWords.length}</span>
-          <span>{Math.round((currentIdx / dueWords.length) * 100)}%</span>
+      <div className="mb-6">
+        <div className="flex justify-between text-xs mb-1">
+          <TextSecondary>{currentIdx + 1} / {dueWords.length}</TextSecondary>
+          <TextSecondary>{Math.round((currentIdx / dueWords.length) * 100)}%</TextSecondary>
         </div>
-        <div style={{ background: 'var(--border)', borderRadius: 4, height: 7 }}>
-          <div style={{ background: 'var(--accent)', borderRadius: 4, height: 7, width: `${(currentIdx / dueWords.length) * 100}%`, transition: 'width 0.3s' }} />
+        <div className="w-full h-1.5 bg-[var(--border)] rounded overflow-hidden">
+          <div className="h-full bg-[var(--accent)] rounded transition-all duration-300" style={{ width: `${(currentIdx / dueWords.length) * 100}%` }} />
         </div>
       </div>
 
       {/* Word card */}
-      <div className="card" style={{ padding: '36px 32px', marginBottom: 16, textAlign: 'center', position: 'relative' }}>
+      <SurfaceCard padding="lg" className="text-center relative mb-4">
         {current.isNew && (
-          <span style={{ position: 'absolute', top: 14, right: 16, background: '#dbeafe', color: '#1d4ed8', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>NEW WORD</span>
+          <span className="absolute top-3.5 right-4 bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full">NEW WORD</span>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 4 }}>
-          <h2 style={{ fontSize: 44, fontFamily: 'var(--font-display)' }}>{current.word}</h2>
-          <button onClick={() => speak(current.word)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)' }}>
+        <div className="flex items-center justify-center gap-3 mb-1">
+          <TextPrimary className="text-5xl font-display font-bold">{current.word}</TextPrimary>
+          <button onClick={() => speak(current.word)} className="bg-none border-none cursor-pointer text-[var(--accent)] hover:opacity-70">
             <Volume2 size={24} />
           </button>
         </div>
-        {current.ipa && <p style={{ color: 'var(--ink-light)', marginBottom: 20, fontSize: 16 }}>{current.ipa}</p>}
+        {current.ipa && <TextSecondary className="text-base mb-5">{current.ipa}</TextSecondary>}
 
         {!showAnswer ? (
-          <button className="btn-primary" onClick={() => { setShowAnswer(true); speak(current.word) }} style={{ fontSize: 16, padding: '13px 36px' }}>
+          <button className="btn-primary text-base py-3 px-9" onClick={() => { setShowAnswer(true); speak(current.word) }}>
             Show Answer
           </button>
         ) : (
           <div className="fade-in">
-            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '18px 20px', marginBottom: 14, textAlign: 'left' }}>
-              {current.part_of_speech && <span className="badge" style={{ marginBottom: 8, display: 'inline-block' }}>{current.part_of_speech}</span>}
-              {current.cefr_level && <span className="badge" style={{ marginBottom: 8, marginLeft: 6, display: 'inline-block', background: '#e0e7ff', color: '#4338ca' }}>{current.cefr_level}</span>}
-              <p style={{ fontSize: 18, fontWeight: 600, marginTop: 6 }}>{current.definition}</p>
-              {current.mongolian && <p style={{ color: 'var(--ink-light)', marginTop: 6, fontSize: 15, fontStyle: 'italic' }}>{current.mongolian}</p>}
-            </div>
+            <SurfaceCard padding="md" className="text-left mb-3 bg-[var(--bg)]">
+              <div className="flex gap-1.5 mb-2">
+                {current.part_of_speech && <span className="badge text-xs">{current.part_of_speech}</span>}
+                {current.cefr_level && <span className="badge text-xs bg-indigo-100 text-indigo-700">{current.cefr_level}</span>}
+              </div>
+              <TextPrimary className="text-base font-semibold mt-1.5">{current.definition}</TextPrimary>
+              {current.mongolian && <TextSecondary className="mt-1.5 text-sm italic">{current.mongolian}</TextSecondary>}
+            </SurfaceCard>
             {examples.length > 0 && (
-              <div style={{ textAlign: 'left', marginBottom: 6, padding: '0 4px' }}>
-                <p style={{ fontSize: 13, color: 'var(--ink-light)', marginBottom: 3 }}>Example:</p>
-                <p style={{ fontStyle: 'italic', fontSize: 15 }}>"{examples[0]}"</p>
+              <div className="text-left mb-2">
+                <TextSecondary className="text-xs mb-1">Example:</TextSecondary>
+                <TextPrimary className="text-sm italic">"{examples[0]}"</TextPrimary>
               </div>
             )}
             {current.etymology_hint && (
-              <div style={{ textAlign: 'left', padding: '10px 14px', background: 'rgba(217, 119, 6, 0.1)', borderRadius: 8, marginTop: 10, fontSize: 13, color: 'var(--ink)' }}>
+              <div className="text-left p-3 bg-amber-50 rounded-lg mt-2.5 text-xs text-[var(--text)]">
                 💡 {current.etymology_hint}
               </div>
             )}
           </div>
         )}
-      </div>
+      </SurfaceCard>
 
       {/* Rating */}
       {showAnswer && (
         <div className="fade-in">
-          <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--ink-light)', marginBottom: 10 }}>How well did you remember?</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          <TextSecondary className="text-center text-xs mb-2.5 block">How well did you remember?</TextSecondary>
+          <div className="grid grid-cols-4 gap-2">
             {[
               { q: 0, label: 'Again', sub: '< 1d', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
               { q: 2, label: 'Hard', sub: '~1d', color: '#d97706', bg: 'rgba(217, 119, 6, 0.1)' },
               { q: 4, label: 'Good', sub: `~${current.review.interval_days}d`, color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
               { q: 5, label: 'Easy', sub: `~${Math.max(1, current.review.interval_days * 2)}d`, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' },
             ].map(({ q, label, sub, color, bg }) => (
-              <button key={q} onClick={() => rateWord(q)} style={{
-                padding: '14px 6px', borderRadius: 10, border: `2px solid ${color}`,
-                background: bg, color, fontWeight: 700, cursor: 'pointer', fontSize: 14,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                transition: 'transform 0.1s',
-              }} onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')} onMouseUp={e => (e.currentTarget.style.transform = '')}>
+              <button
+                key={q}
+                onClick={() => rateWord(q)}
+                className="py-2.5 px-1.5 rounded-lg border-2 font-bold cursor-pointer text-xs flex flex-col items-center gap-0.5 hover:shadow-md transition-all active:scale-95"
+                style={{
+                  borderColor: color,
+                  background: bg,
+                  color,
+                }}
+                onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
+                onMouseUp={e => (e.currentTarget.style.transform = '')}
+              >
                 <span>{label}</span>
-                <span style={{ fontSize: 10, opacity: 0.75, fontWeight: 400 }}>{sub}</span>
+                <span className="text-[9px] opacity-75 font-normal">{sub}</span>
               </button>
             ))}
           </div>
