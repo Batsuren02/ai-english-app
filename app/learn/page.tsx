@@ -141,36 +141,46 @@ export default function LearnPage() {
   }
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (showDetails) return
-    touchStartX.current = e.touches[0].clientX
+    // Allow flip by click, but start swipe tracking
+    touchStartX.current = e.touches[0]?.clientX || 0
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (showDetails || !touchStartX.current) return
-    const currentX = e.touches[0].clientX
-    const diff = currentX - touchStartX.current
+    // Don't swipe if card is flipped
+    if (showDetails) {
+      touchStartX.current = 0
+      return
+    }
 
-    if (Math.abs(diff) > 30) {
-      if (diff < 0) {
-        setSwipeState('left')
-      } else {
-        setSwipeState('right')
-      }
+    if (!touchStartX.current) return
+
+    const currentX = e.touches[0]?.clientX || 0
+    const diff = currentX - touchStartX.current
+    const absD = Math.abs(diff)
+
+    // Show indicator when movement is significant
+    if (absD > 20) {
+      diff < 0 ? setSwipeState('left') : setSwipeState('right')
     } else {
       setSwipeState('idle')
     }
   }
 
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (showDetails || !touchStartX.current) return
+  async function handleTouchEnd(e: React.TouchEvent) {
+    if (showDetails || !touchStartX.current) {
+      setSwipeState('idle')
+      touchStartX.current = 0
+      return
+    }
 
-    const currentX = e.changedTouches[0].clientX
+    const currentX = e.changedTouches[0]?.clientX || 0
     const diff = currentX - touchStartX.current
 
+    // Execute swipe action
     if (diff < -50) {
-      autoRateWord('left')
+      await autoRateWord('left')
     } else if (diff > 50) {
-      autoRateWord('right')
+      await autoRateWord('right')
     }
 
     setSwipeState('idle')
@@ -306,10 +316,34 @@ export default function LearnPage() {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onMouseDown={(e) => {
+          if (!showDetails) touchStartX.current = e.clientX
+        }}
+        onMouseMove={(e) => {
+          if (!showDetails && touchStartX.current) {
+            const diff = e.clientX - touchStartX.current
+            const absD = Math.abs(diff)
+            if (absD > 20) {
+              diff < 0 ? setSwipeState('left') : setSwipeState('right')
+            }
+          }
+        }}
+        onMouseUp={(e) => {
+          if (!showDetails && touchStartX.current) {
+            const diff = e.clientX - touchStartX.current
+            if (diff < -50) autoRateWord('left')
+            else if (diff > 50) autoRateWord('right')
+          }
+          setSwipeState('idle')
+          touchStartX.current = 0
+        }}
+        onMouseLeave={() => {
+          setSwipeState('idle')
+        }}
         className={`relative w-full h-[500px] cursor-grab active:cursor-grabbing transition-all duration-300 rounded-2xl select-none ${
           swipeState === 'left' ? '-translate-x-full opacity-0' : swipeState === 'right' ? 'translate-x-full opacity-0' : ''
         }`}
-        style={{ perspective: '1000px', touchAction: 'none' }}
+        style={{ perspective: '1000px', touchAction: 'none', pointerEvents: 'auto' }}
       >
         {/* Card Flip Container */}
         <div
