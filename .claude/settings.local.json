@@ -29,7 +29,14 @@
       "Bash(git add app/drills/page.tsx)",
       "Bash(git add app/reading/page.tsx app/pronunciation/page.tsx app/settings/page.tsx app/stats/page.tsx app/words/page.tsx)",
       "Bash(curl -s http://localhost:3000)",
-      "Bash(curl -s http://localhost:3001)"
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(git add app/settings/page.tsx)",
+      "Bash(git add app/stats/page.tsx)",
+      "Bash(git add app/words/page.tsx)",
+      "Bash(git add app/reading/page.tsx)",
+      "Bash(git add app/pronunciation/page.tsx)",
+      "Bash(git add app/globals.css)",
+      "Bash(git add components/design/FormInput.tsx)"
     ]
   }
 }

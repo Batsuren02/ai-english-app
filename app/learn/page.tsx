@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
 import { interleaveWords, parseInterleaveConfig } from '@/lib/interleaving'
-import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame, Zap } from 'lucide-react'
+import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -15,17 +15,22 @@ import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 type WordWithReview = Word & { review: Review; isNew?: boolean }
 type SessionResult = { word: Word; quality: number; correct: boolean }
+type SwipeState = 'idle' | 'left' | 'right'
 
 export default function LearnPage() {
   const [dueWords, setDueWords] = useState<WordWithReview[]>([])
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [showAnswer, setShowAnswer] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [results, setResults] = useState<SessionResult[]>([])
   const [sessionDone, setSessionDone] = useState(false)
   const [loading, setLoading] = useState(true)
   const [newCount, setNewCount] = useState(0)
   const [dueCount, setDueCount] = useState(0)
+  const [swipeState, setSwipeState] = useState<SwipeState>('idle')
+
   const startTimeRef = useRef(Date.now())
+  const touchStartX = useRef(0)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { loadDueWords() }, [])
 
@@ -84,13 +89,15 @@ export default function LearnPage() {
     }
   }
 
-  async function rateWord(quality: number) {
+  async function autoRateWord(direction: 'left' | 'right') {
     if (!current) return
+
+    // Quality based on swipe direction: left (✗) = 1 (fail), right (✓) = 4 (good)
+    const quality = direction === 'right' ? 4 : 1
     const sm2 = calculateSM2(quality, current.review.ease_factor, current.review.interval_days, current.review.repetitions)
     const timeMs = Date.now() - startTimeRef.current
 
     if (current.isNew) {
-      // First time: insert review row
       await supabase.from('reviews').upsert({
         word_id: current.id,
         ease_factor: sm2.ease_factor,
@@ -116,20 +123,54 @@ export default function LearnPage() {
     }
 
     await supabase.from('review_logs').insert({
-      word_id: current.id, quiz_type: 'mcq', result: quality,
-      response_time_ms: timeMs, user_answer: quality >= 3 ? current.word : '',
-      source: 'quiz'
+      word_id: current.id, quiz_type: 'swipe', result: quality,
+      response_time_ms: timeMs, user_answer: direction,
+      source: 'learn'
     })
 
     setResults(prev => [...prev, { word: current, quality, correct: quality >= 3 }])
+    setSwipeState('idle')
 
     if (currentIdx + 1 >= dueWords.length) {
       setSessionDone(true)
     } else {
       setCurrentIdx(p => p + 1)
-      setShowAnswer(false)
+      setShowDetails(false)
       startTimeRef.current = Date.now()
     }
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!cardRef.current) return
+    const currentX = e.touches[0].clientX
+    const diff = currentX - touchStartX.current
+    const threshold = 50
+
+    if (diff < -threshold) {
+      setSwipeState('left')
+    } else if (diff > threshold) {
+      setSwipeState('right')
+    } else {
+      setSwipeState('idle')
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!cardRef.current) return
+    const currentX = e.changedTouches[0].clientX
+    const diff = currentX - touchStartX.current
+    const threshold = 80
+
+    if (diff < -threshold) {
+      autoRateWord('left')
+    } else if (diff > threshold) {
+      autoRateWord('right')
+    }
+    setSwipeState('idle')
   }
 
   if (loading) return (
@@ -222,140 +263,160 @@ export default function LearnPage() {
   }
 
   const examples = current.examples as string[] || []
-  const totalLeft = dueWords.length - currentIdx
-
   const progressPercent = (currentIdx / dueWords.length) * 100
-  const ratingOptions = [
-    { q: 0, label: 'Again', sub: '< 1d', color: 'error', bg: 'rgba(239, 68, 68, 0.1)', border: '#ef4444' },
-    { q: 2, label: 'Hard', sub: '~1d', color: 'warning', bg: 'rgba(217, 119, 6, 0.1)', border: '#d97706' },
-    { q: 4, label: 'Good', sub: `~${current.review.interval_days}d`, color: 'info', bg: 'rgba(59, 130, 246, 0.1)', border: '#3b82f6' },
-    { q: 5, label: 'Easy', sub: `~${Math.max(1, current.review.interval_days * 2)}d`, color: 'success', bg: 'rgba(34, 197, 94, 0.1)', border: '#22c55e' },
-  ]
 
   return (
     <div className="fade-in max-w-2xl mx-auto space-y-6">
-      {/* Session Stats Header */}
-      <div className="flex items-center justify-between gap-4 text-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <BookOpen size={16} className="text-[var(--text-secondary)]" />
-            <span className="body text-[var(--text-secondary)]">{dueCount} due</span>
-          </div>
-          {newCount > 0 && (
-            <div className="flex items-center gap-1.5 text-blue-500">
-              <span>✨</span>
-              <span className="body">{newCount} new</span>
-            </div>
-          )}
+      {/* Session Header with Stats */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="h3 text-[var(--text)]">Learning Session</h1>
+          <p className="body text-[var(--text-secondary)] text-sm mt-1">{dueCount} due • {newCount > 0 ? `${newCount} new` : 'No new words'}</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Flame size={16} className="text-amber-600" />
-          <span className="body font-semibold text-amber-600">{results.filter(r => r.correct).length} correct</span>
+        <div className="flex items-center gap-2 text-center">
+          <Flame size={20} className="text-amber-600" />
+          <div>
+            <p className="h4 text-amber-600">{results.filter(r => r.correct).length}</p>
+            <p className="label text-[var(--text-secondary)]">Correct</p>
+          </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <span className="label text-[var(--text-secondary)]">{currentIdx + 1} of {dueWords.length}</span>
-          <span className="label font-semibold text-[var(--accent)]">{Math.round(progressPercent)}%</span>
+      {/* Progress Bar - Detailed */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="label text-[var(--text-secondary)]">Progress</span>
+          <span className="h4 text-[var(--accent)]">{currentIdx + 1}/{dueWords.length}</span>
         </div>
-        <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-[var(--border)] rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/60 rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/50 rounded-full transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Word Card */}
-      <SurfaceCard padding="lg" hover elevation="md" className="text-center relative">
-        {current.isNew && (
-          <span className="absolute top-4 right-4 badge bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1">NEW</span>
-        )}
+      {/* Swipeable Word Card */}
+      <div
+        ref={cardRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={() => setShowDetails(!showDetails)}
+        className={`relative overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-200 rounded-2xl ${
+          swipeState === 'left' ? '-translate-x-full opacity-0' : swipeState === 'right' ? 'translate-x-full opacity-0' : ''
+        }`}
+      >
+        <SurfaceCard padding="lg" className="text-center relative min-h-[400px] flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+          {/* Top Right Badge */}
+          {current.isNew && (
+            <div className="absolute top-4 right-4">
+              <span className="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">NEW</span>
+            </div>
+          )}
 
-        <div className="flex items-center justify-center gap-4 mb-3">
-          <h1 className="text-6xl font-display font-bold text-[var(--text)]">{current.word}</h1>
-          <button
-            onClick={() => speak(current.word)}
-            className="p-2 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all"
-            title="Pronounce"
-          >
-            <Volume2 size={24} />
-          </button>
-        </div>
-
-        {current.ipa && <p className="body text-[var(--text-secondary)] mb-6">{current.ipa}</p>}
-
-        {!showAnswer ? (
-          <InteractiveButton
-            variant="primary"
-            size="lg"
-            onClick={() => {
-              setShowAnswer(true)
-              speak(current.word)
-            }}
-          >
-            Show Answer
-          </InteractiveButton>
-        ) : (
-          <div className="fade-in space-y-4">
-            {/* Definition Card */}
-            <SurfaceCard padding="md" className="text-left bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {current.part_of_speech && (
-                  <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-2.5 py-1 rounded">{current.part_of_speech}</span>
-                )}
-                {current.cefr_level && (
-                  <span className="label bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded">{current.cefr_level}</span>
-                )}
-              </div>
-              <p className="font-semibold text-[var(--text)] mb-2">{current.definition}</p>
-              {current.mongolian && (
-                <p className="text-sm text-[var(--text-secondary)] italic">{current.mongolian}</p>
-              )}
-            </SurfaceCard>
-
-            {/* Example */}
-            {examples.length > 0 && (
-              <div className="text-left">
-                <p className="label text-[var(--text-secondary)] mb-2">Example:</p>
-                <p className="body text-[var(--text)] italic">"{examples[0]}"</p>
-              </div>
-            )}
-
-            {/* Etymology */}
-            {current.etymology_hint && (
-              <div className="text-left p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
-                <p className="text-sm text-amber-900 dark:text-amber-100">💡 {current.etymology_hint}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </SurfaceCard>
-
-      {/* Rating Buttons */}
-      {showAnswer && (
-        <div className="fade-in space-y-3">
-          <p className="label text-center text-[var(--text-secondary)]">How well did you remember?</p>
-          <div className="grid grid-cols-4 gap-2">
-            {ratingOptions.map(({ q, label, sub, bg, border }) => (
+          {/* Word Display */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-4">
+              <h1 className="text-7xl font-display font-bold text-[var(--text)]">{current.word}</h1>
               <button
-                key={q}
-                onClick={() => rateWord(q)}
-                className="py-3 px-2 rounded-lg border-2 font-semibold cursor-pointer text-xs flex flex-col items-center gap-1 transition-all duration-150 hover:shadow-md active:scale-95"
-                style={{
-                  borderColor: border,
-                  backgroundColor: bg,
-                  color: border,
+                onClick={(e) => {
+                  e.stopPropagation()
+                  speak(current.word)
                 }}
+                className="flex-shrink-0 p-3 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all duration-150 hover:shadow-md"
+                title="Pronounce word"
               >
-                <span className="font-bold">{label}</span>
-                <span className="text-[10px] opacity-70 font-normal">{sub}</span>
+                <Volume2 size={28} />
               </button>
-            ))}
+            </div>
+
+            {current.ipa && (
+              <p className="text-lg text-[var(--text-secondary)] font-light">{current.ipa}</p>
+            )}
           </div>
-        </div>
+
+          {/* Details Section */}
+          {showDetails && (
+            <div className="fade-in space-y-4 py-6 border-t border-[var(--border)]">
+              <div className="space-y-3">
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {current.part_of_speech && (
+                    <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-3 py-1.5 rounded-lg">{current.part_of_speech}</span>
+                  )}
+                  {current.cefr_level && (
+                    <span className="label bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg">{current.cefr_level}</span>
+                  )}
+                </div>
+
+                {/* Definition */}
+                <div className="text-left">
+                  <p className="label text-[var(--text-secondary)] mb-1.5">Definition</p>
+                  <p className="body text-[var(--text)]">{current.definition}</p>
+                  {current.mongolian && (
+                    <p className="text-sm text-[var(--text-secondary)] italic mt-2">{current.mongolian}</p>
+                  )}
+                </div>
+
+                {/* Example */}
+                {examples.length > 0 && (
+                  <div className="text-left">
+                    <p className="label text-[var(--text-secondary)] mb-1.5">Example</p>
+                    <p className="body text-[var(--text)] italic">"{examples[0]}"</p>
+                  </div>
+                )}
+
+                {/* Etymology */}
+                {current.etymology_hint && (
+                  <div className="text-left p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                    <p className="text-sm text-amber-700 dark:text-amber-300">💡 {current.etymology_hint}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Swipe Instructions and Visual Indicators */}
+          <div className="space-y-4 pt-6 border-t border-[var(--border)]">
+            {/* Visual Swipe Indicators */}
+            <div className="flex justify-between items-center px-4">
+              <div className={`flex items-center gap-2 transition-all duration-150 ${swipeState === 'left' ? 'opacity-100 text-red-500' : 'opacity-50 text-[var(--text-secondary)]'}`}>
+                <XCircle size={24} />
+                <span className="font-semibold text-sm">Not Yet</span>
+              </div>
+              <div className="text-xs text-[var(--text-secondary)] font-medium">Swipe to rate</div>
+              <div className={`flex items-center gap-2 transition-all duration-150 ${swipeState === 'right' ? 'opacity-100 text-green-500' : 'opacity-50 text-[var(--text-secondary)]'}`}>
+                <span className="font-semibold text-sm">Got It!</span>
+                <CheckCircle size={24} />
+              </div>
+            </div>
+
+            {/* Hint Text */}
+            <p className="label text-[var(--text-secondary)] text-center">
+              {showDetails ? 'Tap to hide details, then swipe' : 'Tap to see details, then swipe to continue'}
+            </p>
+          </div>
+        </SurfaceCard>
+      </div>
+
+      {/* Session Results Summary Card */}
+      {results.length > 0 && (
+        <SurfaceCard padding="md" className="bg-gradient-to-r from-green-500/10 to-green-400/5 border border-green-500/20">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-500/20">
+              <CheckCircle size={20} className="text-green-600" />
+            </div>
+            <div className="flex-1">
+              <p className="label text-[var(--text)]">Session Progress</p>
+              <p className="text-sm text-[var(--text-secondary)]">{results.filter(r => r.correct).length} correct out of {results.length}</p>
+            </div>
+            <div className="text-right">
+              <p className="h4 text-green-600">{Math.round((results.filter(r => r.correct).length / results.length) * 100)}%</p>
+              <p className="text-xs text-[var(--text-secondary)]">Accuracy</p>
+            </div>
+          </div>
+        </SurfaceCard>
       )}
     </div>
   )
