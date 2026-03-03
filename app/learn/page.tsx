@@ -233,7 +233,7 @@ export default function LearnPage() {
               </div>
             )}
             {current.etymology_hint && (
-              <div style={{ textAlign: 'left', padding: '10px 14px', background: '#fef3c7', borderRadius: 8, marginTop: 10, fontSize: 13 }}>
+              <div style={{ textAlign: 'left', padding: '10px 14px', background: 'rgba(217, 119, 6, 0.1)', borderRadius: 8, marginTop: 10, fontSize: 13, color: 'var(--ink)' }}>
                 💡 {current.etymology_hint}
               </div>
             )}
@@ -247,10 +247,10 @@ export default function LearnPage() {
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--ink-light)', marginBottom: 10 }}>How well did you remember?</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
             {[
-              { q: 0, label: 'Again', sub: '< 1d', color: '#dc2626', bg: '#fee2e2' },
-              { q: 2, label: 'Hard', sub: '~1d', color: '#d97706', bg: '#fef3c7' },
-              { q: 4, label: 'Good', sub: `~${current.review.interval_days}d`, color: '#2563eb', bg: '#dbeafe' },
-              { q: 5, label: 'Easy', sub: `~${Math.max(1, current.review.interval_days * 2)}d`, color: '#16a34a', bg: '#dcfce7' },
+              { q: 0, label: 'Again', sub: '< 1d', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
+              { q: 2, label: 'Hard', sub: '~1d', color: '#d97706', bg: 'rgba(217, 119, 6, 0.1)' },
+              { q: 4, label: 'Good', sub: `~${current.review.interval_days}d`, color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
+              { q: 5, label: 'Easy', sub: `~${Math.max(1, current.review.interval_days * 2)}d`, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' },
             ].map(({ q, label, sub, color, bg }) => (
               <button key={q} onClick={() => rateWord(q)} style={{
                 padding: '14px 6px', borderRadius: 10, border: `2px solid ${color}`,

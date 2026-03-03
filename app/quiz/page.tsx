@@ -382,11 +382,18 @@ export default function QuizPage() {
                     else if (opt === userAnswer && feedback === 'wrong') { bg = 'rgba(220, 38, 38, 0.1)'; border = '#dc2626'; color = '#dc2626' }
                   }
                   return (
-                    <button key={opt} onClick={() => selectMCQ(opt)} disabled={!!feedback} style={{
-                      padding: '14px 10px', background: bg, border: `2px solid ${border}`, borderRadius: 10,
-                      cursor: feedback ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14,
-                      color, fontWeight: 600, transition: 'all 0.18s', textAlign: 'left', lineHeight: 1.4,
-                    }}>
+                    <button
+                      key={opt}
+                      onClick={() => selectMCQ(opt)}
+                      disabled={!!feedback}
+                      aria-label={`Option: ${opt}${feedback === 'correct' && opt === quiz.answer ? ' (correct)' : ''}`}
+                      role="radio"
+                      aria-checked={userAnswer === opt}
+                      style={{
+                        padding: '14px 10px', background: bg, border: `2px solid ${border}`, borderRadius: 10,
+                        cursor: feedback ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14,
+                        color, fontWeight: 600, transition: 'all 0.18s', textAlign: 'left', lineHeight: 1.4,
+                      }}>
                       {opt}
                     </button>
                   )
@@ -404,12 +411,18 @@ export default function QuizPage() {
                     const isSelected = matchState.selected === word
                     const isWrong = matchState.wrong.includes(word)
                     return (
-                      <button key={word} onClick={() => !isMatched && handleMatchClick(word, true)} disabled={!!isMatched || matchDone} style={{
-                        padding: '10px 12px', borderRadius: 8, border: `2px solid ${isMatched ? '#16a34a' : isSelected ? 'var(--accent)' : isWrong ? '#dc2626' : 'var(--border)'}`,
-                        background: isMatched ? 'rgba(22, 163, 74, 0.1)' : isSelected ? 'rgba(var(--accent-rgb), 0.1)' : isWrong ? 'rgba(220, 38, 38, 0.1)' : 'var(--bg)',
-                        color: isMatched ? '#16a34a' : 'var(--ink)', fontWeight: 700, cursor: isMatched ? 'default' : 'pointer',
-                        fontFamily: 'var(--font-body)', fontSize: 14, textAlign: 'left', transition: 'all 0.15s',
-                      }}>
+                      <button
+                        key={word}
+                        onClick={() => !isMatched && handleMatchClick(word, true)}
+                        disabled={!!isMatched || matchDone}
+                        aria-label={`Word: ${word}${isMatched ? ' (matched)' : isSelected ? ' (selected)' : ''}`}
+                        aria-pressed={isSelected}
+                        style={{
+                          padding: '10px 12px', borderRadius: 8, border: `2px solid ${isMatched ? '#16a34a' : isSelected ? 'var(--accent)' : isWrong ? '#dc2626' : 'var(--border)'}`,
+                          background: isMatched ? 'rgba(22, 163, 74, 0.1)' : isSelected ? 'rgba(var(--accent-rgb), 0.1)' : isWrong ? 'rgba(220, 38, 38, 0.1)' : 'var(--bg)',
+                          color: isMatched ? '#16a34a' : 'var(--ink)', fontWeight: 700, cursor: isMatched ? 'default' : 'pointer',
+                          fontFamily: 'var(--font-body)', fontSize: 14, textAlign: 'left', transition: 'all 0.15s',
+                        }}>
                         {word} {isMatched && '✓'}
                       </button>
                     )

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import PWAInstallPrompt from '@/components/PWAInstallPrompt'
 import XPPopup from '@/components/XPPopup'
+import { ToastProvider } from '@/components/ToastProvider'
 
 const NAV = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
@@ -60,7 +61,7 @@ function SidebarHeader() {
   )
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+function RootLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [dark, setDark] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -98,6 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body>
+        <ToastProvider>
         <div className="flex min-h-screen bg-[var(--bg)]">
 
           {/* ─── Desktop sidebar (md+) ─────────────────────────────── */}
@@ -146,7 +148,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* XP Popup Notifications */}
         <XPPopup />
+        </ToastProvider>
       </body>
     </html>
   )
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <RootLayoutContent>{children}</RootLayoutContent>
 }

@@ -11,6 +11,8 @@ export default function Dashboard() {
   const [totalWords, setTotalWords] = useState(0)
   const [weakWords, setWeakWords] = useState<(Word & { ease_factor: number })[]>([])
   const [recentActivity, setRecentActivity] = useState<{ date: string; count: number }[]>([])
+  const [readingSessions, setReadingSessions] = useState(0)
+  const [pronunciationAttempts, setPronunciationAttempts] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -20,17 +22,21 @@ export default function Dashboard() {
   async function loadDashboard() {
     const today = new Date().toISOString().split('T')[0]
 
-    const [profileRes, wordsRes, dueRes, weakRes, logsRes] = await Promise.all([
+    const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
       supabase.from('user_profile').select('*').single(),
       supabase.from('words').select('id', { count: 'exact', head: true }),
       supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
       supabase.from('reviews').select('word_id, ease_factor, words(id, word, definition)').order('ease_factor').limit(5),
       supabase.from('review_logs').select('created_at').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+      supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
+      supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
     ])
 
     if (profileRes.data) setProfile(profileRes.data)
     if (wordsRes.count !== null) setTotalWords(wordsRes.count)
     if (dueRes.count !== null) setDueCount(dueRes.count)
+    if (readingRes.count !== null) setReadingSessions(readingRes.count)
+    if (pronunciationRes.count !== null) setPronunciationAttempts(pronunciationRes.count)
 
     if (weakRes.data) {
       const ww = weakRes.data
@@ -183,6 +189,20 @@ export default function Dashboard() {
             )
           })}
         </div>
+      </div>
+
+      {/* Phase 4 Features Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+        {[
+          { icon: '📖', label: 'Reading Sessions', value: readingSessions, color: '#2563eb' },
+          { icon: '🎤', label: 'Pronunciations', value: pronunciationAttempts, color: '#d97706' },
+        ].map(({ icon, label, value, color }) => (
+          <div key={label} className="card" style={{ padding: '20px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-display)', color, marginBottom: 4 }}>{value}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-light)' }}>{label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Weak words */}
