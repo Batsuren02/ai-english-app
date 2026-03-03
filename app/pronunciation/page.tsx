@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { supabase, Word } from '@/lib/supabase'
 import { buildWaveformData, downloadRecording, speakWord } from '@/lib/speech-utils'
