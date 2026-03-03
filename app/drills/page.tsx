@@ -209,7 +209,7 @@ export default function DrillsPage() {
                   const newConfig = { ...config, easeFactorThreshold: parseFloat(e.target.value) }
                   setConfig(newConfig)
                   // Save to user_profile
-                  supabase.from('user_profile').update({ drill_ease_threshold: newConfig.easeFactorThreshold }).eq('id', (profile as any)?.id).catch(err => console.error('Failed to save config:', err))
+                  void supabase.from('user_profile').update({ drill_ease_threshold: newConfig.easeFactorThreshold }).eq('id', (profile as any)?.id)
                 }}
               />
               <p className="text-xs text-[var(--ink-light)] mt-1">
@@ -230,7 +230,7 @@ export default function DrillsPage() {
                   const newConfig = { ...config, sessionLength: parseInt(e.target.value) }
                   setConfig(newConfig)
                   // Save to user_profile
-                  supabase.from('user_profile').update({ drill_session_length: newConfig.sessionLength }).eq('id', (profile as any)?.id).catch(err => console.error('Failed to save config:', err))
+                  void supabase.from('user_profile').update({ drill_session_length: newConfig.sessionLength }).eq('id', (profile as any)?.id)
                 }}
               />
             </div>

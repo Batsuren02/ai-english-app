@@ -126,6 +126,5 @@ export default function ImportPage() {
         {/* Import Form */}
         <ImportForm onImportComplete={handleImport} />
       </div>
-    </div>
   )
 }

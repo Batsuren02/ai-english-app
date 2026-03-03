@@ -19,7 +19,7 @@ export function checkSpeechSupport(): SpeechSupport {
     mediaRecorder: typeof MediaRecorder !== 'undefined',
     speechRecognition:
       typeof window !== 'undefined' &&
-      (window.SpeechRecognition !== undefined || (window as any).webkitSpeechRecognition !== undefined),
+      ((window as any).SpeechRecognition !== undefined || (window as any).webkitSpeechRecognition !== undefined),
     speechSynthesis: typeof window !== 'undefined' && window.speechSynthesis !== undefined,
   }
 }
@@ -219,7 +219,7 @@ export function speakWord(word: string, language: string = 'en-US'): void {
   window.speechSynthesis.cancel()
 
   const utterance = new SpeechSynthesisUtterance(word)
-  utterance.language = language
+  ;(utterance as any).language = language
   utterance.rate = 0.8 // Slower for clarity
   window.speechSynthesis.speak(utterance)
 }
