@@ -5,12 +5,14 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { supabase, Word } from '@/lib/supabase'
 import { buildWaveformData, downloadRecording, speakWord } from '@/lib/speech-utils'
+import { Volume2, Download, Copy, Check, Mic } from 'lucide-react'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import AudioRecorder from '@/components/AudioRecorder'
 import WaveformDisplay from '@/components/WaveformDisplay'
-import { Volume2, Download, Copy, Check } from 'lucide-react'
 
 export default function PronunciationPage() {
   const [words, setWords] = useState<Word[]>([])
@@ -92,174 +94,178 @@ export default function PronunciationPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="card p-8 text-center text-[var(--text-secondary)]">Loading words...</div>
+      <div className="flex items-center justify-center h-72">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+          <p className="text-sm text-[var(--text-secondary)]">Loading words...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="font-display text-3xl text-[var(--text)] mb-2">Pronunciation Practice</h1>
-        <p className="text-[var(--text-secondary)]">Record yourself and compare with native pronunciation</p>
+    <div className="fade-in max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="h2 text-[var(--text)] mb-2">Pronunciation Practice</h1>
+        <p className="body text-[var(--text-secondary)]">Record yourself and compare with native pronunciation</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Word Selector */}
-        <div className="md:col-span-1">
-          <div className="card p-4 space-y-3 h-full flex flex-col">
-            <h2 className="font-semibold text-[var(--text)] text-sm">Select Word</h2>
-            <Input
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="text-sm"
-            />
-            <ScrollArea className="flex-1">
-              <div className="space-y-2 pr-4">
-                {filteredWords.map((word) => (
-                  <button
-                    key={word.id}
-                    onClick={() => {
-                      setSelectedWord(word)
-                      setUserBlob(null)
-                      setUserSamples(null)
-                    }}
-                    className={`w-full text-left p-2 rounded text-sm transition-all ${
-                      selectedWord?.id === word.id
-                        ? 'bg-[var(--accent)] text-white'
-                        : 'hover:bg-[var(--border)] text-[var(--text)]'
-                    }`}
-                  >
-                    <div className="font-medium">{word.word}</div>
-                    <div className="text-xs opacity-75 truncate">{word.definition}</div>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
+        <SurfaceCard padding="lg" className="md:col-span-1 h-[500px] flex flex-col">
+          <h3 className="h4 text-[var(--text)] mb-4">Select Word</h3>
+          <Input
+            placeholder="Search words…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-4"
+          />
+          <ScrollArea className="flex-1">
+            <div className="space-y-1 pr-4">
+              {filteredWords.map((word) => (
+                <button
+                  key={word.id}
+                  onClick={() => {
+                    setSelectedWord(word)
+                    setUserBlob(null)
+                    setUserSamples(null)
+                  }}
+                  className={`w-full text-left p-3 rounded-lg transition-all text-sm mb-1 border ${
+                    selectedWord?.id === word.id
+                      ? 'bg-[var(--accent)]/10 border-[var(--accent)] text-[var(--accent)]'
+                      : 'border-transparent hover:bg-[var(--surface)] text-[var(--text)]'
+                  }`}
+                >
+                  <div className="font-semibold">{word.word}</div>
+                  <div className="text-xs opacity-75 truncate">{word.definition}</div>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </SurfaceCard>
 
         {/* Practice Area */}
         <div className="md:col-span-2 space-y-6">
           {selectedWord ? (
             <>
               {/* Word Header */}
-              <div className="card p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="font-display text-2xl text-[var(--text)] mb-1">{selectedWord.word}</h2>
-                    <p className="text-sm text-[var(--text-secondary)]">{selectedWord.definition}</p>
+              <SurfaceCard padding="lg" elevation="md">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h2 className="h3 text-[var(--text)] mb-2">{selectedWord.word}</h2>
+                    <p className="body text-[var(--text-secondary)] mb-3">{selectedWord.definition}</p>
                     {selectedWord.ipa && (
-                      <p className="text-xs text-[var(--accent)] mt-2">/{selectedWord.ipa}/</p>
+                      <p className="label text-[var(--accent)] font-mono">/{selectedWord.ipa}/</p>
                     )}
                   </div>
-                  <Button
+                  <InteractiveButton
+                    variant="primary"
+                    size="md"
                     onClick={() => playAudio('ref')}
-                    disabled={isPlaying === 'ref'}
-                    variant="ghost"
-                    size="sm"
+                    isLoading={isPlaying === 'ref'}
+                    className="flex-shrink-0 flex items-center gap-2"
                   >
-                    <Volume2 size={16} className="mr-2" />
+                    <Volume2 size={16} />
                     {isPlaying === 'ref' ? 'Playing...' : 'Hear'}
-                  </Button>
+                  </InteractiveButton>
                 </div>
-              </div>
+              </SurfaceCard>
 
               {/* Reference Waveform */}
-              <div className="card p-6">
+              <SurfaceCard padding="lg">
                 <WaveformDisplay
                   samples={null}
                   label="Reference (native speaker)"
                   color="var(--accent)"
                   height={64}
                 />
-                <p className="text-xs text-[var(--text-secondary)] mt-3 italic">
+                <p className="text-xs text-[var(--text-secondary)] mt-4 italic">
                   Shown using browser text-to-speech
                 </p>
-              </div>
+              </SurfaceCard>
 
               {/* Recording */}
-              <div className="card p-6">
-                <h3 className="font-semibold text-[var(--text)] mb-4 text-center">Your Recording</h3>
+              <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+                <h3 className="h4 text-[var(--text)] mb-6 flex items-center gap-2 justify-center">
+                  <Mic size={20} />
+                  Your Recording
+                </h3>
                 <AudioRecorder word={selectedWord} onRecordingComplete={handleRecordingComplete} />
-              </div>
+              </SurfaceCard>
 
               {/* Your Waveform */}
               {userSamples && (
                 <>
-                  <div className="card p-6">
+                  <SurfaceCard padding="lg">
                     <WaveformDisplay samples={userSamples} label="Your recording" color="var(--accent)" height={64} />
                     {userBlob && (
-                      <div className="flex gap-2 mt-4">
-                        <Button
+                      <div className="flex gap-3 mt-6">
+                        <InteractiveButton
+                          variant="secondary"
+                          size="md"
                           onClick={() => playAudio('user')}
-                          disabled={isPlaying === 'user'}
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1"
+                          isLoading={isPlaying === 'user'}
+                          className="flex-1 flex items-center justify-center gap-2"
                         >
-                          <Volume2 size={16} className="mr-2" />
+                          <Volume2 size={16} />
                           {isPlaying === 'user' ? 'Playing...' : 'Play'}
-                        </Button>
-                        <Button
+                        </InteractiveButton>
+                        <InteractiveButton
+                          variant="secondary"
+                          size="md"
                           onClick={() => downloadRecording(userBlob, `${selectedWord.word}-practice.webm`)}
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1"
+                          className="flex-1 flex items-center justify-center gap-2"
                         >
-                          <Download size={16} className="mr-2" />
+                          <Download size={16} />
                           Download
-                        </Button>
+                        </InteractiveButton>
                       </div>
                     )}
-                  </div>
+                  </SurfaceCard>
 
                   {/* Score Placeholder */}
-                  <div className="card p-6 bg-gradient-to-br from-[var(--accent-light)] to-[var(--bg)]">
-                    <div className="text-center">
-                      <p className="text-sm text-[var(--text-secondary)] mb-2">Similarity Score</p>
-                      <div className="text-3xl font-display text-[var(--accent)] mb-2">--</div>
+                  <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--accent)]/10 to-[var(--surface)]">
+                    <div className="text-center space-y-3">
+                      <p className="label text-[var(--text-secondary)]">Similarity Score</p>
+                      <div className="text-4xl font-bold text-[var(--accent)]">--</div>
                       <p className="text-xs text-[var(--text-secondary)]">
-                        Claude AI feedback available (copy prompt below)
+                        Use Claude AI for detailed pronunciation feedback
                       </p>
                     </div>
-                  </div>
+                  </SurfaceCard>
 
                   {/* Claude Feedback Prompt */}
-                  <div className="card p-6 space-y-3">
-                    <h3 className="font-semibold text-[var(--text)] text-sm">Get AI Feedback</h3>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      Copy the prompt below, paste into Claude.ai with your recording description, and get detailed pronunciation feedback.
+                  <SurfaceCard padding="lg">
+                    <h3 className="h4 text-[var(--text)] mb-3">🤖 Get AI Feedback</h3>
+                    <p className="text-sm text-[var(--text-secondary)] mb-4">
+                      Copy the prompt below and paste into Claude.ai with a description of your recording to get detailed feedback.
                     </p>
-                    <div className="bg-[var(--surface)] p-3 rounded border border-[var(--border)] text-xs font-mono whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
-                      I recorded myself saying the word "{selectedWord.word}". Can you analyze my pronunciation and
-                      suggest improvements? The reference pronunciation is /{selectedWord.ipa}/. My recording sounds [describe
-                      your sound here].
+                    <div className="bg-[var(--surface)] p-4 rounded-lg border border-[var(--border)] text-sm font-mono whitespace-pre-wrap break-words max-h-40 overflow-y-auto mb-4 text-[var(--text-secondary)]">
+                      I recorded myself saying the word "{selectedWord.word}". Can you analyze my pronunciation and suggest improvements? The reference pronunciation is /{selectedWord.ipa}/.
                     </div>
-                    <Button
+                    <InteractiveButton
+                      variant="secondary"
+                      size="md"
                       onClick={() => {
                         const text = `I recorded myself saying the word "${selectedWord.word}". Can you analyze my pronunciation and suggest improvements? The reference pronunciation is /${selectedWord.ipa}/.`
                         navigator.clipboard.writeText(text)
                         setCopied(true)
                         setTimeout(() => setCopied(false), 2000)
                       }}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full"
+                      className="w-full flex items-center justify-center gap-2"
                     >
-                      {copied ? <Check size={16} className="mr-2" /> : <Copy size={16} className="mr-2" />}
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
                       {copied ? 'Copied!' : 'Copy Prompt'}
-                    </Button>
-                  </div>
+                    </InteractiveButton>
+                  </SurfaceCard>
                 </>
               )}
             </>
           ) : (
-            <div className="card p-12 text-center text-[var(--text-secondary)]">
-              <p>Select a word to start practicing pronunciation</p>
-            </div>
+            <SurfaceCard padding="lg" className="text-center py-16">
+              <Mic size={48} className="mx-auto mb-4 text-[var(--text-secondary)] opacity-40" />
+              <p className="body text-[var(--text-secondary)]">Select a word to start practicing pronunciation</p>
+            </SurfaceCard>
           )}
         </div>
       </div>
