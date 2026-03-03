@@ -72,6 +72,7 @@ export type UserProfile = {
   notification_hour: number
   quiet_hours_start: number
   quiet_hours_end: number
+  font_family?: string
   updated_at: string
 }
 

@@ -2,7 +2,8 @@
 import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 import { BookOpen, LayoutDashboard, BookMarked, Brain, BarChart2, Settings, Menu, Upload, FileText, Mic2, Zap } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -66,6 +67,24 @@ function SidebarHeader() {
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  // Load user's font preference on mount
+  useEffect(() => {
+    async function loadFontPreference() {
+      try {
+        const { data: profile } = await supabase.from('user_profile').select('font_family').single()
+        if (profile?.font_family === 'monospace') {
+          document.documentElement.style.setProperty('--active-font', "var(--font-monospace)")
+        } else {
+          document.documentElement.style.setProperty('--active-font', "var(--font-body)")
+        }
+      } catch (err) {
+        // Default to serif if not found
+        document.documentElement.style.setProperty('--active-font', "var(--font-body)")
+      }
+    }
+    loadFontPreference()
+  }, [])
 
   return (
     <ToastProvider>

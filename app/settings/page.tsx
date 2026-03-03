@@ -114,6 +114,13 @@ export default function SettingsPage() {
             <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Daily Target (minutes)</label>
             <input className="input" type="number" min={5} max={120} value={profile.daily_target_minutes} onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))} />
           </div>
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Font Style</label>
+            <select className="input" value={profile.font_family || 'serif'} onChange={e => setProfile(p => ({ ...p, font_family: e.target.value }))}>
+              <option value="serif">Serif (Default)</option>
+              <option value="monospace">Monospace</option>
+            </select>
+          </div>
           <button className="btn-primary" onClick={save} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: loading ? 0.6 : 1 }}>
             {loading ? '...' : saved ? <Check size={16} /> : <Save size={16} />}
             {loading ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}

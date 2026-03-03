@@ -9,6 +9,10 @@
   --font-display: 'Playfair Display', serif;
   --font-body: 'Source Serif 4', serif;
   --font-monospace: 'Menlo', 'Courier New', monospace;
+  --current-font: var(--font-body);
+
+  /* Font preference (updated dynamically via layout) */
+  --active-font: var(--font-body);
 
   /* Light Theme (Default) */
   --bg: #f5f4ef;
@@ -64,7 +68,7 @@
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body);
+  font-family: var(--active-font);
   font-size: 16px;
   line-height: 1.6;
   height: 100%;
