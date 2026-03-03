@@ -14,6 +14,7 @@ import { pickInterleavedWord, parseInterleaveConfig } from '@/lib/interleaving'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
@@ -200,12 +201,22 @@ export default function QuizPage() {
   }
 
   // --- RENDER ---
-  if (loading) return <div className="py-10"><TextSecondary>Loading quiz data...</TextSecondary></div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-72">
+      <TextSecondary className="italic">Loading quiz data...</TextSecondary>
+    </div>
+  )
 
   if (words.length < 4) return (
-    <div className="text-center py-16">
-      <TextPrimary className="text-lg mb-3 block">You need at least 4 words to start quizzing.</TextPrimary>
-      <a href="/words" className="text-[var(--accent)] font-semibold">Add Words →</a>
+    <div className="text-center py-20 space-y-4">
+      <Target size={48} className="mx-auto text-[var(--accent)]" />
+      <h2 className="h3 text-[var(--text)]">Not enough words yet</h2>
+      <p className="body text-[var(--text-secondary)]">You need at least 4 words to start quizzing.</p>
+      <a href="/words">
+        <InteractiveButton variant="primary" size="md">
+          Add Words to Quiz
+        </InteractiveButton>
+      </a>
     </div>
   )
 
@@ -217,67 +228,87 @@ export default function QuizPage() {
     const avgTime = Math.round(results.reduce((a, r) => a + r.timeMs, 0) / results.length / 1000)
 
     return (
-      <div className="fade-in max-w-lg mx-auto">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <Award size={52} className="text-[var(--accent)]" />
+      <div className="fade-in max-w-2xl mx-auto space-y-6">
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <Award size={64} className="text-[var(--accent)]" />
           </div>
-          <TextPrimary className="text-3xl font-bold mb-1">Session Complete!</TextPrimary>
-          <TextSecondary className="text-sm">Here's how you did</TextSecondary>
+          <h1 className="h2 text-[var(--text)] mb-2">Quiz Session Complete! 🎉</h1>
+          <p className="body text-[var(--text-secondary)]">Great job! Here's your performance breakdown.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
-          {[
-            { label: 'Score', value: `${results.filter(r => r.correct).length}/${results.length}`, color: 'var(--accent)' },
-            { label: 'Accuracy', value: `${accuracy}%`, color: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626' },
-            { label: 'Avg Time', value: `${avgTime}s`, color: '#2563eb' },
-          ].map(({ label, value, color }) => (
-            <SurfaceCard key={label} padding="md" className="text-center">
-              <div style={{ fontSize: 26, fontFamily: 'var(--font-display)', fontWeight: 700, color }}>{value}</div>
-              <TextSecondary className="text-xs">{label}</TextSecondary>
-            </SurfaceCard>
-          ))}
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            label="Score"
+            value={`${results.filter(r => r.correct).length}/${results.length}`}
+            color="var(--accent)"
+          />
+          <StatCard
+            label="Accuracy"
+            value={`${accuracy}%`}
+            color={accuracy >= 80 ? 'var(--success)' : accuracy >= 60 ? '#d97706' : 'var(--error)'}
+            trend={{ direction: accuracy >= 60 ? 'up' : 'down', percent: accuracy }}
+          />
+          <StatCard
+            label="Avg Time"
+            value={`${avgTime}s`}
+            color="#2563eb"
+          />
         </div>
 
-        {/* By quiz type */}
-        <SurfaceCard padding="md" className="mb-5">
-          <TextPrimary className="text-sm font-semibold mb-3">Accuracy by Type</TextPrimary>
-          {Object.entries(byType).map(([type, { correct, total }]) => {
-            const pct = Math.round(correct / total * 100)
-            const meta = QUIZ_META[type]
-            return (
-              <div key={type} className="mb-2.5">
-                <div className="flex justify-between text-xs mb-1">
-                  <TextPrimary className="text-xs">{meta?.icon} {meta?.label}</TextPrimary>
-                  <span className="font-semibold" style={{ color: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626' }}>{pct}%</span>
+        {/* Accuracy by Type */}
+        <SurfaceCard padding="lg">
+          <h3 className="h4 text-[var(--text)] mb-4">Accuracy by Quiz Type</h3>
+          <div className="space-y-3">
+            {Object.entries(byType).map(([type, { correct, total }]) => {
+              const pct = Math.round(correct / total * 100)
+              const meta = QUIZ_META[type]
+              return (
+                <div key={type}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="label text-[var(--text)]">{meta?.icon} {meta?.label}</span>
+                    <span className="label font-semibold" style={{ color: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626' }}>
+                      {pct}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ background: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626', width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-[var(--border)] rounded overflow-hidden">
-                  <div className="h-full rounded transition-all duration-500" style={{ background: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626', width: `${pct}%` }} />
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </SurfaceCard>
 
-        {/* Wrong words */}
+        {/* Wrong Words */}
         {results.filter(r => !r.correct).length > 0 && (
-          <SurfaceCard padding="md" className="mb-5">
-            <TextPrimary className="text-sm font-semibold mb-2.5">Review These Words</TextPrimary>
-            {results.filter(r => !r.correct).map((r, i) => (
-              <div key={i} className="flex gap-2 items-baseline py-1.5 border-b border-[var(--border)]">
-                <XCircle size={14} className="text-red-600 flex-shrink-0 mt-0.5" />
-                <TextPrimary className="font-semibold text-sm">{r.word.word}</TextPrimary>
-                <TextSecondary className="text-xs line-clamp-1">{r.word.definition?.slice(0, 50)}</TextSecondary>
-              </div>
-            ))}
+          <SurfaceCard padding="lg">
+            <h3 className="h4 text-[var(--text)] mb-3">Words to Review</h3>
+            <div className="space-y-2">
+              {results.filter(r => !r.correct).map((r, i) => (
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-[var(--border)] last:border-0">
+                  <XCircle size={16} className="text-[var(--error)] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[var(--text)] text-sm">{r.word.word}</p>
+                    <p className="text-xs text-[var(--text-secondary)] line-clamp-1">{r.word.definition?.slice(0, 60)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </SurfaceCard>
         )}
 
-        <div className="flex gap-2.5">
-          <button className="btn-primary flex-1 flex items-center justify-center gap-1.5" onClick={() => startMode(mode!)}>
-            <RotateCcw size={15} /> Play Again
-          </button>
-          <button className="btn-ghost flex-1" onClick={() => setMode(null)}>Change Mode</button>
+        <div className="flex gap-3">
+          <InteractiveButton variant="primary" size="lg" className="flex-1" onClick={() => startMode(mode!)}>
+            <RotateCcw size={16} className="inline mr-2" />
+            Play Again
+          </InteractiveButton>
+          <InteractiveButton variant="secondary" size="lg" className="flex-1" onClick={() => setMode(null)}>
+            Change Mode
+          </InteractiveButton>
         </div>
       </div>
     )
@@ -285,48 +316,70 @@ export default function QuizPage() {
 
   // MODE SELECT
   if (!mode) return (
-    <div className="fade-in">
-      <TextPrimary className="text-3xl font-bold mb-1">Quiz Mode</TextPrimary>
-      <TextSecondary className="text-sm mb-6">Choose how you want to practice — {sessionLength} questions per session</TextSecondary>
-
-      {/* Auto mode */}
-      <div onClick={() => startMode('auto')} className="bg-gradient-to-br from-amber-600 to-amber-700 rounded-lg p-5 mb-4 cursor-pointer text-white hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Shuffle size={18} />
-              <span className="font-bold text-lg">Smart Mix</span>
-              <span className="bg-white/25 text-xs px-2 py-0.5 rounded-full font-semibold">RECOMMENDED</span>
-            </div>
-            <p className="opacity-90 text-sm">Auto-weighted: boosts your weakest quiz types and hardest words</p>
-          </div>
-          <ChevronRight size={20} />
-        </div>
+    <div className="fade-in space-y-6">
+      <div>
+        <h1 className="h2 text-[var(--text)] mb-2">Practice Modes</h1>
+        <p className="body text-[var(--text-secondary)]">Choose how you want to practice — {sessionLength} questions per session</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
+      {/* Smart Mix - Recommended */}
+      <SurfaceCard
+        hover
+        gradient
+        elevation="md"
+        className="bg-gradient-to-br from-amber-600 to-amber-700 text-white cursor-pointer"
+        onClick={() => startMode('auto')}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Shuffle size={20} />
+              <h3 className="h4 text-white">Smart Mix</h3>
+              <span className="badge bg-white/25 text-white text-xs font-semibold px-2 py-1">RECOMMENDED</span>
+            </div>
+            <p className="text-sm opacity-90">Auto-weighted: focuses on your weakest areas and challenging words</p>
+          </div>
+          <ChevronRight size={24} />
+        </div>
+      </SurfaceCard>
+
+      {/* Quiz Type Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {Object.entries(QUIZ_META).map(([type, { label, icon, desc, color }]) => {
           const accuracy = weakTypeMap[type as QuizType]
           return (
-            <div key={type} className="card" onClick={() => startMode(type as QuizType)}
-              style={{ padding: '20px', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '' }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
-              <h3 style={{ fontSize: 15, marginBottom: 4, color }}>{label}</h3>
-              <p style={{ fontSize: 12, color: 'var(--ink-light)', marginBottom: 10 }}>{desc}</p>
-              {accuracy !== undefined && (
+            <SurfaceCard
+              key={type}
+              hover
+              elevation="sm"
+              className="cursor-pointer transition-transform"
+              onClick={() => startMode(type as QuizType)}
+            >
+              <div className="space-y-3">
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
-                    <span style={{ color: 'var(--ink-light)' }}>Your accuracy</span>
-                    <span style={{ fontWeight: 700, color: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626' }}>{accuracy}%</span>
-                  </div>
-                  <div style={{ background: 'var(--border)', borderRadius: 2, height: 4 }}>
-                    <div style={{ background: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626', width: `${accuracy}%`, height: 4, borderRadius: 2 }} />
-                  </div>
+                  <div className="text-3xl mb-2">{icon}</div>
+                  <h3 className="h4 text-[var(--text)]" style={{ color }}>{label}</h3>
                 </div>
-              )}
-            </div>
+                <p className="text-sm text-[var(--text-secondary)]">{desc}</p>
+
+                {accuracy !== undefined && (
+                  <div className="pt-2 border-t border-[var(--border)]">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="label text-[var(--text-secondary)]">Your accuracy</span>
+                      <span className="label font-semibold" style={{ color: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626' }}>
+                        {accuracy}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ background: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626', width: `${accuracy}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SurfaceCard>
           )
         })}
       </div>
