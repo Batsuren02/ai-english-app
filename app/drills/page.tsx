@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Quiz } from '@/lib/quiz-generator'
 import { AlertCircle, Brain, RotateCw, CheckCircle, XCircle } from 'lucide-react'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 type SessionState = 'setup' | 'drilling' | 'complete'
 
@@ -182,7 +184,7 @@ export default function DrillsPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="card p-8 text-center text-[var(--ink-light)]">Loading...</div>
+        <SurfaceCard padding="lg" className="text-center"><TextSecondary>Loading...</TextSecondary></SurfaceCard>
       </div>
     )
   }
@@ -190,16 +192,16 @@ export default function DrillsPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="font-display text-3xl text-[var(--ink)] mb-2">Weak Word Drills</h1>
-        <p className="text-[var(--ink-light)]">Intensive practice on your hardest words</p>
+        <TextPrimary className="font-display text-3xl mb-1">Weak Word Drills</TextPrimary>
+        <TextSecondary className="text-sm">Intensive practice on your hardest words</TextSecondary>
       </div>
 
       {state === 'setup' && (
-        <div className="card p-6 space-y-6">
+        <SurfaceCard padding="lg">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--ink)] mb-2">
-                Ease factor threshold (words below this value)
+              <label className="block text-sm font-medium mb-2">
+                <TextPrimary>Ease factor threshold (words below this value)</TextPrimary>
               </label>
               <Input
                 type="number"
@@ -214,14 +216,12 @@ export default function DrillsPage() {
                   void supabase.from('user_profile').update({ drill_ease_threshold: newConfig.easeFactorThreshold }).eq('id', (profile as any)?.id)
                 }}
               />
-              <p className="text-xs text-[var(--ink-light)] mt-1">
-                Lower = harder words. Default 2.8 includes your hardest words.
-              </p>
+              <TextSecondary className="text-xs mt-1">Lower = harder words. Default 2.8 includes your hardest words.</TextSecondary>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--ink)] mb-2">
-                Questions per session
+              <label className="block text-sm font-medium mb-2">
+                <TextPrimary>Questions per session</TextPrimary>
               </label>
               <Input
                 type="number"
@@ -243,9 +243,7 @@ export default function DrillsPage() {
                 checked={config.difficultyProgression}
                 onChange={(e) => setConfig({ ...config, difficultyProgression: e.target.checked })}
               />
-              <span className="text-sm font-medium text-[var(--ink)]">
-                Increase difficulty as session progresses
-              </span>
+              <TextPrimary className="text-sm font-medium">Increase difficulty as session progresses</TextPrimary>
             </label>
           </div>
 
@@ -259,24 +257,24 @@ export default function DrillsPage() {
               <span>No words in your vocabulary yet. Add words first!</span>
             </div>
           )}
-        </div>
+        </SurfaceCard>
       )}
 
       {state === 'drilling' && currentQuiz && (
-        <div className="card p-6 space-y-6">
+        <SurfaceCard padding="lg">
           {/* Progress */}
-          <div>
+          <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-[var(--ink-light)]">
+              <TextSecondary className="text-xs">
                 Question {currentIndex + 1} of {Math.min(config.sessionLength, weakWords.length)}
-              </span>
-              <span className="text-sm text-[var(--ink-light)]">
+              </TextSecondary>
+              <TextSecondary className="text-xs">
                 {results.filter((r) => r.correct).length} correct
-              </span>
+              </TextSecondary>
             </div>
             <div className="w-full bg-[var(--border)] rounded-full h-2 overflow-hidden">
               <div
-                className="bg-[var(--accent)] h-full transition-all"
+                className="bg-[var(--accent)] h-full transition-all duration-300"
                 style={{ width: `${((currentIndex + 1) / Math.min(config.sessionLength, weakWords.length)) * 100}%` }}
               />
             </div>
@@ -284,7 +282,7 @@ export default function DrillsPage() {
 
           {/* Quiz */}
           <div>
-            <p className="text-sm text-[var(--ink-light)] mb-2">{currentQuiz.question}</p>
+            <TextSecondary className="text-sm mb-3 block">{currentQuiz.question}</TextSecondary>
 
             {currentQuiz.type === 'mcq' && currentQuiz.options && (
               <div className="space-y-2">
@@ -350,11 +348,11 @@ export default function DrillsPage() {
                 </span>
               </div>
               {feedback === 'wrong' && (
-                <p className="text-sm text-[var(--ink-light)]">
-                  The correct answer is: <strong className="text-[var(--ink)]">{currentQuiz.answer}</strong>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  The correct answer is: <strong className="text-[var(--text)]">{currentQuiz.answer}</strong>
                 </p>
               )}
-              <p className="text-sm text-[var(--ink-light)] mt-1">
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
                 <strong>{currentQuiz.word.word}</strong>
                 {currentQuiz.word.definition && ` — ${currentQuiz.word.definition}`}
               </p>
@@ -373,32 +371,30 @@ export default function DrillsPage() {
                 : 'Next Question'}
             </Button>
           )}
-        </div>
+        </SurfaceCard>
       )}
 
       {state === 'complete' && results.length > 0 && (
-        <div className="card p-6 space-y-6">
-          <div className="text-center">
-            <div className="text-4xl font-display text-[var(--accent)] mb-2">
+        <SurfaceCard padding="lg">
+          <div className="text-center mb-6">
+            <div className="text-5xl font-display text-[var(--accent)] mb-2">
               {Math.round((results.filter((r) => r.correct).length / results.length) * 100)}%
             </div>
-            <p className="text-[var(--ink-light)]">
+            <TextSecondary className="text-sm">
               {results.filter((r) => r.correct).length} of {results.length} correct
-            </p>
+            </TextSecondary>
           </div>
 
-          <div className="space-y-2 max-h-80 overflow-y-auto">
+          <div className="space-y-2 max-h-80 overflow-y-auto mb-6">
             {results.map((result, i) => (
-              <div key={i} className="p-3 bg-[var(--bg)] rounded border border-[var(--border)] text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-[var(--ink)]">{result.word}</span>
+              <div key={i} className="p-3 bg-[var(--surface)] rounded border border-[var(--border)]">
+                <div className="flex items-center justify-between mb-1">
+                  <TextPrimary className="font-medium text-sm">{result.word}</TextPrimary>
                   <span className={result.correct ? 'text-green-600' : 'text-red-600'}>
                     {result.correct ? '✓' : '✗'}
                   </span>
                 </div>
-                <p className="text-xs text-[var(--ink-light)] mt-1">
-                  Ease: {result.beforeEase.toFixed(1)} → {result.afterEase.toFixed(1)}
-                </p>
+                <TextSecondary className="text-xs">Ease: {result.beforeEase.toFixed(1)} → {result.afterEase.toFixed(1)}</TextSecondary>
               </div>
             ))}
           </div>
@@ -422,7 +418,7 @@ export default function DrillsPage() {
               Go to Learn
             </Button>
           </div>
-        </div>
+        </SurfaceCard>
       )}
     </div>
   )
