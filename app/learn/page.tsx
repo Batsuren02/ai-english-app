@@ -141,14 +141,15 @@ export default function LearnPage() {
   }
 
   function handleTouchStart(e: React.TouchEvent) {
+    if (showDetails) return // Don't swipe while card is flipped
     touchStartX.current = e.touches[0].clientX
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (!cardRef.current) return
+    if (!cardRef.current || showDetails) return
     const currentX = e.touches[0].clientX
     const diff = currentX - touchStartX.current
-    const threshold = 50
+    const threshold = 40 // Reduced threshold for better sensitivity
 
     if (diff < -threshold) {
       setSwipeState('left')
@@ -160,10 +161,10 @@ export default function LearnPage() {
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (!cardRef.current) return
+    if (!cardRef.current || showDetails) return
     const currentX = e.changedTouches[0].clientX
     const diff = currentX - touchStartX.current
-    const threshold = 80
+    const threshold = 60 // Lower threshold = easier to trigger
 
     if (diff < -threshold) {
       autoRateWord('left')
@@ -296,18 +297,32 @@ export default function LearnPage() {
         </div>
       </div>
 
-      {/* Swipeable Word Card */}
+      {/* Swipeable Word Card - 3D Flip */}
       <div
         ref={cardRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={() => setShowDetails(!showDetails)}
-        className={`relative overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-200 rounded-2xl ${
+        className={`relative h-[500px] cursor-grab active:cursor-grabbing transition-all duration-300 rounded-2xl ${
           swipeState === 'left' ? '-translate-x-full opacity-0' : swipeState === 'right' ? 'translate-x-full opacity-0' : ''
         }`}
+        style={{ perspective: '1000px' }}
       >
-        <SurfaceCard padding="lg" className="text-center relative min-h-[400px] flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+        {/* Card Flip Container */}
+        <div
+          className="relative w-full h-full transition-transform duration-500"
+          style={{
+            transformStyle: 'preserve-3d',
+            transform: showDetails ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
+          onClick={() => setShowDetails(!showDetails)}
+        >
+          {/* Front of Card - Word Display */}
+          <div
+            className="absolute w-full h-full"
+            style={{ backfaceVisibility: 'hidden' }}
+          >
+            <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
           {/* Top Right Badge */}
           {current.isNew && (
             <div className="absolute top-4 right-4">
@@ -336,49 +351,8 @@ export default function LearnPage() {
             )}
           </div>
 
-          {/* Details Section */}
-          {showDetails && (
-            <div className="fade-in space-y-4 py-6 border-t border-[var(--border)]">
-              <div className="space-y-3">
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {current.part_of_speech && (
-                    <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-3 py-1.5 rounded-lg">{current.part_of_speech}</span>
-                  )}
-                  {current.cefr_level && (
-                    <span className="label bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg">{current.cefr_level}</span>
-                  )}
-                </div>
-
-                {/* Definition */}
-                <div className="text-left">
-                  <p className="label text-[var(--text-secondary)] mb-1.5">Definition</p>
-                  <p className="body text-[var(--text)]">{current.definition}</p>
-                  {current.mongolian && (
-                    <p className="text-sm text-[var(--text-secondary)] italic mt-2">{current.mongolian}</p>
-                  )}
-                </div>
-
-                {/* Example */}
-                {examples.length > 0 && (
-                  <div className="text-left">
-                    <p className="label text-[var(--text-secondary)] mb-1.5">Example</p>
-                    <p className="body text-[var(--text)] italic">"{examples[0]}"</p>
-                  </div>
-                )}
-
-                {/* Etymology */}
-                {current.etymology_hint && (
-                  <div className="text-left p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
-                    <p className="text-sm text-amber-700 dark:text-amber-300">💡 {current.etymology_hint}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Swipe Instructions and Visual Indicators */}
-          <div className="space-y-4 pt-6 border-t border-[var(--border)]">
+          <div className="space-y-4 mt-auto pt-6 border-t border-[var(--border)]">
             {/* Visual Swipe Indicators */}
             <div className="flex justify-between items-center px-4">
               <div className={`flex items-center gap-2 transition-all duration-150 ${swipeState === 'left' ? 'opacity-100 text-red-500' : 'opacity-50 text-[var(--text-secondary)]'}`}>
@@ -393,11 +367,69 @@ export default function LearnPage() {
             </div>
 
             {/* Hint Text */}
-            <p className="label text-[var(--text-secondary)] text-center">
-              {showDetails ? 'Tap to hide details, then swipe' : 'Tap to see details, then swipe to continue'}
+            <p className="label text-[var(--text-secondary)] text-center text-sm cursor-pointer hover:text-[var(--accent)] transition-colors">
+              Tap card to flip
             </p>
           </div>
-        </SurfaceCard>
+            </SurfaceCard>
+          </div>
+
+          {/* Back of Card - Details */}
+          <div
+            className="absolute w-full h-full"
+            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+          >
+            <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col bg-gradient-to-br from-indigo-500/10 to-blue-500/10">
+              {/* Back Card Header */}
+              <div className="text-center mb-4">
+                <h2 className="h4 text-[var(--text)]">{current.word}</h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Tap to flip back</p>
+              </div>
+
+              {/* Details Content */}
+              <div className="flex-1 overflow-y-auto space-y-4">
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {current.part_of_speech && (
+                    <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-3 py-1.5 rounded-lg">{current.part_of_speech}</span>
+                  )}
+                  {current.cefr_level && (
+                    <span className="label bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg">{current.cefr_level}</span>
+                  )}
+                </div>
+
+                {/* Definition */}
+                <div className="text-left">
+                  <p className="label text-[var(--text-secondary)] mb-1.5 text-xs">Definition</p>
+                  <p className="body text-[var(--text)] text-sm">{current.definition}</p>
+                  {current.mongolian && (
+                    <p className="text-xs text-[var(--text-secondary)] italic mt-2">{current.mongolian}</p>
+                  )}
+                </div>
+
+                {/* Example */}
+                {examples.length > 0 && (
+                  <div className="text-left">
+                    <p className="label text-[var(--text-secondary)] mb-1.5 text-xs">Example</p>
+                    <p className="body text-[var(--text)] text-sm italic">"{examples[0]}"</p>
+                  </div>
+                )}
+
+                {/* Etymology */}
+                {current.etymology_hint && (
+                  <div className="text-left p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                    <p className="text-xs text-amber-700 dark:text-amber-300">💡 {current.etymology_hint}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Flip Hint */}
+              <p className="label text-[var(--text-secondary)] text-center text-xs mt-4 cursor-pointer hover:text-[var(--accent)] transition-colors">
+                Tap to flip back & swipe
+              </p>
+            </SurfaceCard>
+          </div>
+        </div>
       </div>
 
       {/* Session Results Summary Card */}
