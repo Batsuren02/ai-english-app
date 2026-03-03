@@ -389,7 +389,7 @@ export default function WordsPage() {
                 'group relative rounded-xl border-2 p-5 cursor-pointer transition-all duration-300',
                 'bg-gradient-to-br',
                 getMasteryColor(w.masteryLevel),
-                'hover:shadow-lg hover:scale-105'
+                !showDetails && 'hover:shadow-lg hover:scale-105'
               )}
               onClick={() => {
                 setSelectedWord(w)
@@ -487,12 +487,9 @@ export default function WordsPage() {
 
           {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <SurfaceCard
-              padding="lg"
-              className="w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto shadow-2xl animate-in"
-            >
+            <div className="w-full max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto bg-[var(--bg-card)] rounded-xl shadow-2xl animate-in overflow-hidden border border-[var(--border)]">
               {/* Modal header */}
-              <div className="flex items-start justify-between gap-4 pb-4 border-b border-[var(--border)]">
+              <div className="flex items-start justify-between gap-4 p-6 border-b border-[var(--border)] flex-shrink-0">
                 <div className="flex-1 min-w-0">
                   <h2 className="h3 text-[var(--text)] flex items-center gap-2 flex-wrap">
                     <span className="truncate">{selectedWord.word}</span>
@@ -519,7 +516,7 @@ export default function WordsPage() {
               </div>
 
               {/* Modal body - scrollable */}
-              <ScrollArea className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
                 <div className="p-6 space-y-6">
                   {/* Mastery status */}
                   <div>
@@ -630,10 +627,10 @@ export default function WordsPage() {
                     </div>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
 
-              {/* Modal footer */}
-              <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)] flex gap-2">
+              {/* Modal footer - sticky */}
+              <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-card)] flex gap-2 flex-shrink-0">
                 <InteractiveButton
                   variant="danger"
                   size="md"
@@ -647,7 +644,7 @@ export default function WordsPage() {
                   Delete
                 </InteractiveButton>
               </div>
-            </SurfaceCard>
+            </div>
           </div>
         </>
       )}
