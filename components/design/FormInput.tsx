@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { X, Check } from 'lucide-react'
+import { X, Check, AlertCircle } from 'lucide-react'
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -133,6 +133,12 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
           {icon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none">
               {icon}
+            </div>
+          )}
+
+          {error && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--error)] animate-scaleIn">
+              <AlertCircle size={18} />
             </div>
           )}
 
