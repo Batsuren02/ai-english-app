@@ -367,12 +367,17 @@ export default function WordsPage() {
               : 'Try adjusting your search or filters'
           }
           action={
-            words.length === 0
-              ? {
-                  label: 'Add Your First Word',
-                  onClick: () => setShowAdd(true),
-                }
-              : undefined
+            words.length === 0 ? (
+              <InteractiveButton
+                variant="primary"
+                size="md"
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Add Your First Word
+              </InteractiveButton>
+            ) : undefined
           }
         />
       ) : (
