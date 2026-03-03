@@ -5,11 +5,14 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { supabase, Word } from '@/lib/supabase'
 import { tokenizeText, getUniqueWords, markKnownTokens, calculateComprehension, getUnknownWords, Token, buildHighlightedTokens } from '@/lib/text-tokenizer'
+import { BookOpen, Plus, Check } from 'lucide-react'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
+import StatCard from '@/components/design/StatCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertCircle, BookOpen, Plus, X } from 'lucide-react'
 
 type Phase = 'input' | 'analyze' | 'reading'
 
@@ -152,72 +155,77 @@ export default function ReadingPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="card p-8 text-center text-[var(--text-secondary)]">Loading your vocabulary...</div>
+      <div className="flex items-center justify-center h-72">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+          <p className="text-sm text-[var(--text-secondary)]">Loading your vocabulary...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="font-display text-3xl text-[var(--text)] mb-2">Reading Mode</h1>
-        <p className="text-[var(--text-secondary)]">Paste text and learn unknown words instantly</p>
+    <div className="fade-in max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="h2 text-[var(--text)] mb-2">Reading Mode</h1>
+        <p className="body text-[var(--text-secondary)]">Paste text and instantly learn unknown words</p>
       </div>
 
       {phase === 'input' && (
-        <div className="card p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[var(--text)] mb-2">Paste your text</label>
-            <Textarea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Paste an article, book excerpt, or any English text here..."
-              className="min-h-64"
-            />
-            <p className="text-xs text-[var(--text-secondary)] mt-2">
-              {textInput.length} characters · ~{Math.ceil(textInput.split(/\s+/).length)} words
-            </p>
-          </div>
+        <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+          <div className="space-y-6">
+            <div>
+              <label className="label text-[var(--text)] block mb-3">Paste your text</label>
+              <Textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Paste an article, book excerpt, or any English text here..."
+                className="min-h-64 resize-none"
+              />
+              <div className="flex justify-between items-center mt-3">
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {textInput.length} characters · ~{Math.ceil(textInput.split(/\s+/).length)} words
+                </p>
+                {textInput.trim() && (
+                  <p className="text-xs text-[var(--accent)] font-medium">Ready to analyze</p>
+                )}
+              </div>
+            </div>
 
-          <Button
-            onClick={handleAnalyze}
-            disabled={!textInput.trim() || analyzing}
-            className="w-full"
-          >
-            {analyzing ? 'Analyzing...' : 'Analyze Text'}
-          </Button>
-        </div>
+            <InteractiveButton
+              variant="primary"
+              size="lg"
+              onClick={handleAnalyze}
+              isLoading={analyzing}
+              className="w-full"
+            >
+              {analyzing ? 'Analyzing...' : 'Analyze Text'}
+            </InteractiveButton>
+          </div>
+        </SurfaceCard>
       )}
 
       {phase === 'reading' && tokens.length > 0 && (
         <div className="space-y-6">
-          {/* Comprehension Card */}
-          <div className="card p-6">
-            <div className="text-center">
-              <div className="text-4xl font-display text-[var(--accent)] mb-2">{comprehension?.percentage}%</div>
-              <p className="text-[var(--text-secondary)] text-sm">
-                You know {comprehension?.knownCount} of {comprehension?.totalCount} words
-              </p>
-              <div className="mt-4 w-full bg-[var(--border)] rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-[var(--accent)] h-full transition-all"
-                  style={{ width: `${comprehension?.percentage}%` }}
-                />
-              </div>
-            </div>
-          </div>
+          {/* Comprehension Stats */}
+          <StatCard
+            icon={<BookOpen size={28} className="text-[var(--accent)]" />}
+            label="Comprehension"
+            value={`${comprehension?.percentage}%`}
+            color="var(--accent)"
+            trend={comprehension && comprehension.percentage >= 80 ? { direction: 'up', percent: Math.round((comprehension.knownCount / comprehension.totalCount) * 100) } : undefined}
+          />
 
           {/* Reading Text */}
-          <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-[var(--text)]">Your Text</h2>
-            <div className="leading-relaxed text-[var(--text)] text-sm p-4 bg-[var(--surface)] rounded border border-[var(--border)]">
+          <SurfaceCard padding="lg">
+            <h3 className="h4 text-[var(--text)] mb-4">Your Text</h3>
+            <div className="leading-relaxed text-[var(--text)] text-base p-5 bg-[var(--bg)] rounded-lg border border-[var(--border)] space-y-3">
               {buildHighlightedTokens(textInput, tokens).map((segment, i) => (
                 <span
                   key={i}
-                  className={segment.isHighlighted ? 'cursor-pointer font-medium' : ''}
+                  className={segment.isHighlighted && !segment.isKnown ? 'cursor-pointer font-medium px-1 rounded transition-colors hover:opacity-70' : ''}
                   style={{
-                    backgroundColor: segment.isHighlighted && !segment.isKnown ? 'var(--accent-light)' : undefined,
+                    backgroundColor: segment.isHighlighted && !segment.isKnown ? 'rgba(var(--accent-rgb), 0.15)' : undefined,
                     color: segment.isHighlighted && !segment.isKnown ? 'var(--accent)' : undefined,
                   }}
                   onClick={() => {
@@ -230,41 +238,43 @@ export default function ReadingPage() {
                 </span>
               ))}
             </div>
-          </div>
+            <p className="text-xs text-[var(--text-secondary)] mt-3">💡 Click on highlighted words to add them to your vocabulary</p>
+          </SurfaceCard>
 
           {/* Unknown Words */}
           {unknownWords.length > 0 && (
-            <div className="card p-6 space-y-4">
-              <h2 className="font-semibold text-[var(--text)]">
-                Unknown Words ({unknownWords.length})
-              </h2>
+            <SurfaceCard padding="lg">
+              <h3 className="h4 text-[var(--text)] mb-4">
+                Unknown Words · {unknownWords.length}
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {unknownWords.map((word) => (
-                  <div
+                  <button
                     key={word}
-                    className="flex items-center gap-2 px-3 py-2 bg-[var(--surface)] rounded border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
+                    onClick={() => !sessionsAdded.includes(word) && handleAddWord(word)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm ${
+                      sessionsAdded.includes(word)
+                        ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900 text-green-700 dark:text-green-300'
+                        : 'bg-[var(--surface)] border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5'
+                    }`}
                   >
-                    <span className="text-sm">{word}</span>
-                    {!sessionsAdded.includes(word) ? (
-                      <button
-                        onClick={() => handleAddWord(word)}
-                        className="text-[var(--accent)] hover:text-[var(--accent)] p-0.5"
-                        title="Add to vocabulary"
-                      >
-                        <Plus size={16} />
-                      </button>
+                    <span className="font-medium">{word}</span>
+                    {sessionsAdded.includes(word) ? (
+                      <Check size={14} />
                     ) : (
-                      <span className="text-xs text-green-600 font-medium">✓ Added</span>
+                      <Plus size={14} className="opacity-60" />
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
-            </div>
+            </SurfaceCard>
           )}
 
           {/* Actions */}
           <div className="flex gap-3">
-            <Button
+            <InteractiveButton
+              variant="secondary"
+              size="md"
               onClick={() => {
                 setPhase('input')
                 setTextInput('')
@@ -273,15 +283,20 @@ export default function ReadingPage() {
                 setUnknownWords([])
                 setSessionsAdded([])
               }}
-              variant="ghost"
               className="flex-1"
             >
               Load New Text
-            </Button>
+            </InteractiveButton>
             {sessionsAdded.length > 0 && (
-              <Button className="flex-1" disabled>
-                ✓ {sessionsAdded.length} word{sessionsAdded.length > 1 ? 's' : ''} added
-              </Button>
+              <InteractiveButton
+                variant="primary"
+                size="md"
+                disabled
+                className="flex-1"
+              >
+                <Check size={16} className="mr-2" />
+                {sessionsAdded.length} word{sessionsAdded.length > 1 ? 's' : ''} added
+              </InteractiveButton>
             )}
           </div>
         </div>
@@ -291,13 +306,15 @@ export default function ReadingPage() {
       <Dialog open={!!selectedWord} onOpenChange={() => setSelectedWord(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="capitalize">{selectedWord}</DialogTitle>
+            <DialogTitle className="h3 capitalize text-[var(--text)]">{selectedWord}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-[var(--text-secondary)]">
+          <div className="space-y-5">
+            <p className="body text-[var(--text-secondary)]">
               This word is not in your vocabulary yet.
             </p>
-            <Button
+            <InteractiveButton
+              variant="primary"
+              size="md"
               onClick={() => {
                 if (selectedWord) {
                   handleAddWord(selectedWord)
@@ -306,8 +323,9 @@ export default function ReadingPage() {
               }}
               className="w-full"
             >
+              <Plus size={16} className="mr-2" />
               Add to Vocabulary
-            </Button>
+            </InteractiveButton>
             <p className="text-xs text-[var(--text-secondary)] text-center">
               You can edit the definition later in the Words page.
             </p>
