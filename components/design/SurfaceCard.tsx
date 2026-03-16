@@ -43,9 +43,9 @@ export function SurfaceCard({
   }[depth]
 
   const elevationHoverClass = hover ? {
-    sm: 'hover:shadow-lg hover:scale-105 hover:translate-y-[-2px]',
-    md: 'hover:shadow-xl hover:scale-105 hover:translate-y-[-4px]',
-    lg: 'hover:shadow-2xl hover:scale-110 hover:translate-y-[-6px]',
+    sm: 'hover:shadow-md hover:translate-y-[-2px]',
+    md: 'hover:shadow-lg hover:translate-y-[-3px]',
+    lg: 'hover:shadow-xl hover:translate-y-[-4px]',
   }[elevation] : ''
 
   const hoverClass = hover ? 'surface-hover' : ''

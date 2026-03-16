@@ -13,21 +13,21 @@ import { ThemeProvider } from '@/lib/theme-context'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 const NAV = [
-  { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/learn',     label: 'Learn',     icon: Brain           },
-  { href: '/words',     label: 'Words',     icon: BookMarked      },
-  { href: '/import',    label: 'Import',    icon: Upload          },
-  { href: '/reading',   label: 'Reading',   icon: FileText        },
-  { href: '/drills',    label: 'Drills',    icon: Zap             },
-  { href: '/pronunciation', label: 'Pronunciation', icon: Mic2     },
-  { href: '/quiz',      label: 'Quiz',      icon: BookOpen        },
-  { href: '/stats',     label: 'Stats',     icon: BarChart2       },
-  { href: '/settings',  label: 'Settings',  icon: Settings        },
+  { href: '/',          label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/learn',     label: 'Learn',         icon: Brain           },
+  { href: '/words',     label: 'Words',         icon: BookMarked      },
+  { href: '/import',    label: 'Import',        icon: Upload          },
+  { href: '/reading',   label: 'Reading',       icon: FileText        },
+  { href: '/drills',    label: 'Drills',        icon: Zap             },
+  { href: '/pronunciation', label: 'Pronunciation', icon: Mic2        },
+  { href: '/quiz',      label: 'Quiz',          icon: BookOpen        },
+  { href: '/stats',     label: 'Stats',         icon: BarChart2       },
+  { href: '/settings',  label: 'Settings',      icon: Settings        },
 ]
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-0.5 px-2 flex-1">
+    <nav className="flex flex-col gap-0.5 px-3 flex-1">
       {NAV.map(({ href, label, icon: Icon }) => {
         const active = pathname === href
         return (
@@ -36,13 +36,13 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
             href={href}
             onClick={onNavigate}
             className={cn(
-              'flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm transition-all',
+              'flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150',
               active
-                ? 'bg-[var(--accent)] text-white font-semibold'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text)]'
+                ? 'bg-[var(--accent)] text-white shadow-sm'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--border-light)] hover:text-[var(--text)]'
             )}
           >
-            <Icon size={16} />
+            <Icon size={15} strokeWidth={active ? 2.5 : 2} />
             {label}
           </Link>
         )
@@ -53,11 +53,18 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 
 function SidebarHeader() {
   return (
-    <div className="px-5 pb-5 mb-2 border-b border-[var(--border)]">
-      <h1 className="font-display text-xl text-[var(--accent)] leading-snug">
-        English<br />
-        <span className="text-[var(--text)] text-sm font-normal font-body">Learning App</span>
-      </h1>
+    <div className="px-4 pb-4 mb-1 border-b border-[var(--border)]">
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
+          <BookOpen size={15} color="white" strokeWidth={2.5} />
+        </div>
+        <div>
+          <h1 className="text-[14px] font-bold text-[var(--text)] leading-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
+            Lexicon
+          </h1>
+          <p className="text-[11px] text-[var(--text-secondary)] leading-tight">English Learning</p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -71,10 +78,10 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
           {/* ─── Desktop sidebar (md+) ─────────────────────────────── */}
           <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-[220px] z-40
-                            bg-[var(--surface)] border-r border-[var(--border)] pt-6 pb-4">
+                            bg-[var(--surface)] border-r border-[var(--border)] pt-5 pb-4">
             <SidebarHeader />
             <NavLinks pathname={pathname} />
-            <div className="px-5 pt-3 border-t border-[var(--border)] mt-2">
+            <div className="px-4 pt-3 border-t border-[var(--border)] mt-2">
               <ThemeSwitcher />
             </div>
           </aside>
@@ -82,18 +89,23 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           {/* ─── Mobile top bar + Sheet drawer (below md) ──────────── */}
           <header className="md:hidden fixed top-0 inset-x-0 z-50 h-14 flex items-center justify-between
                              px-4 bg-[var(--surface)] border-b border-[var(--border)]">
-            <span className="font-display font-bold text-[var(--accent)] text-lg">EnglishApp</span>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-[var(--accent)] flex items-center justify-center">
+                <BookOpen size={13} color="white" strokeWidth={2.5} />
+              </div>
+              <span className="text-[15px] font-bold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Lexicon</span>
+            </div>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open menu">
-                  <Menu size={20} />
+                  <Menu size={18} />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="pt-12 pb-6 flex flex-col gap-0 w-[240px]">
                 <SidebarHeader />
                 <NavLinks pathname={pathname} onNavigate={() => setSheetOpen(false)} />
-                <div className="px-5 pt-3 mt-2 border-t border-[var(--border)]">
+                <div className="px-4 pt-3 mt-2 border-t border-[var(--border)]">
                   <ThemeSwitcher />
                 </div>
               </SheetContent>

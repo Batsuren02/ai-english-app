@@ -103,29 +103,33 @@ export default function SettingsPage() {
       {/* Profile Settings */}
       <SurfaceCard padding="lg">
         <h3 className="h3 text-[var(--text)] mb-5">Learning Profile</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="label text-[var(--text)] block mb-2">CEFR Level</label>
-            <select
-              className="input w-full"
-              value={profile.cefr_level}
-              onChange={e => setProfile(p => ({ ...p, cefr_level: e.target.value }))}
-            >
-              {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
-            </select>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Your current English proficiency level</p>
-          </div>
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label text-[var(--text)] block mb-2">CEFR Level</label>
+              <select
+                className="input w-full"
+                value={profile.cefr_level}
+                onChange={e => setProfile(p => ({ ...p, cefr_level: e.target.value }))}
+              >
+                {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
+              </select>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1.5">Your current English proficiency level</p>
+            </div>
 
-          <div>
-            <label className="label text-[var(--text)] block mb-2">Learning Goal</label>
-            <select
-              className="input w-full"
-              value={profile.goal}
-              onChange={e => setProfile(p => ({ ...p, goal: e.target.value }))}
-            >
-              {['general','ielts','business','travel'].map(g => <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>)}
-            </select>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">What are you learning English for?</p>
+            <div>
+              <label className="label text-[var(--text)] block mb-2">Learning Goal</label>
+              <select
+                className="input w-full"
+                value={profile.goal}
+                onChange={e => setProfile(p => ({ ...p, goal: e.target.value }))}
+              >
+                {['general','ielts','business','travel'].map(g => (
+                  <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1.5">What are you learning English for?</p>
+            </div>
           </div>
 
           <div>
@@ -138,7 +142,7 @@ export default function SettingsPage() {
               value={profile.daily_target_minutes}
               onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))}
             />
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Ideal daily practice time</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-1.5">Ideal daily practice time</p>
           </div>
 
           <InteractiveButton
@@ -146,21 +150,26 @@ export default function SettingsPage() {
             size="md"
             onClick={save}
             isLoading={loading}
-            className="mt-2"
           >
-            {saved ? <><Check size={16} className="inline mr-2" />Saved!</> : <><Save size={16} className="inline mr-2" />Save Settings</>}
+            {saved ? <><Check size={15} className="inline mr-1.5" />Saved!</> : <><Save size={15} className="inline mr-1.5" />Save Settings</>}
           </InteractiveButton>
         </div>
       </SurfaceCard>
 
       {/* Interleaving Settings */}
       <SurfaceCard padding="lg">
-        <h3 className="h3 text-[var(--text)] mb-5">Session Interleaving</h3>
-        <div className="space-y-5">
+        <h3 className="h3 text-[var(--text)] mb-1">Session Interleaving</h3>
+        <p className="text-[13px] text-[var(--text-secondary)] mb-5">Control how new and review words are mixed in your sessions.</p>
+        <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="label text-[var(--text)]">New Word Ratio</label>
-              <span className="label font-semibold text-[var(--accent)]">{Math.round((profile.interleave_ratio || 0.25) * 100)}%</span>
+              <div>
+                <label className="label text-[var(--text)]">New Word Ratio</label>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Mix new words with reviews</p>
+              </div>
+              <span className="text-[15px] font-bold text-[var(--accent)] tabular-nums">
+                {Math.round((profile.interleave_ratio || 0.25) * 100)}%
+              </span>
             </div>
             <input
               type="range"
@@ -169,15 +178,22 @@ export default function SettingsPage() {
               step="0.05"
               value={profile.interleave_ratio || 0.25}
               onChange={e => setProfile(p => ({ ...p, interleave_ratio: parseFloat(e.target.value) }))}
-              className="w-full"
             />
-            <p className="text-xs text-[var(--text-secondary)] mt-2">How many new words to mix with review words. Higher = more new words per session.</p>
+            <div className="flex justify-between text-[11px] text-[var(--text-secondary)] mt-1.5">
+              <span>Fewer new words</span>
+              <span>More new words</span>
+            </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="label text-[var(--text)]">Category Mixing</label>
-              <span className="label font-semibold text-[var(--accent)]">{Math.round((profile.interleave_category_penalty || 0.6) * 100)}%</span>
+              <div>
+                <label className="label text-[var(--text)]">Category Mixing</label>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Avoid repeating same category</p>
+              </div>
+              <span className="text-[15px] font-bold text-[var(--accent)] tabular-nums">
+                {Math.round((profile.interleave_category_penalty || 0.6) * 100)}%
+              </span>
             </div>
             <input
               type="range"
@@ -186,9 +202,11 @@ export default function SettingsPage() {
               step="0.1"
               value={profile.interleave_category_penalty || 0.6}
               onChange={e => setProfile(p => ({ ...p, interleave_category_penalty: parseFloat(e.target.value) }))}
-              className="w-full"
             />
-            <p className="text-xs text-[var(--text-secondary)] mt-2">Avoid repeating the same word category. Higher = better variety in sessions.</p>
+            <div className="flex justify-between text-[11px] text-[var(--text-secondary)] mt-1.5">
+              <span>Less variety</span>
+              <span>More variety</span>
+            </div>
           </div>
 
           <InteractiveButton
@@ -196,9 +214,8 @@ export default function SettingsPage() {
             size="md"
             onClick={save}
             isLoading={loading}
-            className="mt-2"
           >
-            {saved ? <><Check size={16} className="inline mr-2" />Saved!</> : <><Save size={16} className="inline mr-2" />Save Settings</>}
+            {saved ? <><Check size={15} className="inline mr-1.5" />Saved!</> : <><Save size={15} className="inline mr-1.5" />Save Settings</>}
           </InteractiveButton>
         </div>
       </SurfaceCard>

@@ -12,6 +12,7 @@ import {
 } from '@/lib/quiz-generator'
 import { pickInterleavedWord, parseInterleaveConfig } from '@/lib/interleaving'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -390,71 +391,91 @@ export default function QuizPage() {
   const progress = (score.total / sessionLength) * 100
 
   return (
-    <div className="fade-in" style={{ maxWidth: 600, margin: '0 auto' }}>
+    <div className="fade-in max-w-[600px] mx-auto">
       {/* Progress header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <button onClick={() => setMode(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-light)', fontSize: 14, padding: 0 }}>← Change Mode</button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 13, color: 'var(--ink-light)' }}>{score.total}/{sessionLength}</span>
-            <span style={{ fontWeight: 700, color: '#16a34a' }}>{score.correct} ✓</span>
-            {score.total - score.correct > 0 && <span style={{ fontWeight: 700, color: '#dc2626' }}>{score.total - score.correct} ✗</span>}
+      <div className="mb-5">
+        <div className="flex justify-between items-center mb-2">
+          <button
+            onClick={() => setMode(null)}
+            className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors flex items-center gap-1"
+          >
+            ← Change Mode
+          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-[var(--text-secondary)]">{score.total}/{sessionLength}</span>
+            <span className="text-[13px] font-bold text-[var(--success)]">{score.correct} ✓</span>
+            {score.total - score.correct > 0 && (
+              <span className="text-[13px] font-bold text-[var(--error)]">{score.total - score.correct} ✗</span>
+            )}
           </div>
         </div>
-        <div style={{ background: 'var(--border)', borderRadius: 4, height: 6 }}>
-          <div style={{ background: 'var(--accent)', borderRadius: 4, height: 6, width: `${progress}%`, transition: 'width 0.4s ease' }} />
+        <div className="w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ background: 'var(--accent)', width: `${progress}%` }}
+          />
         </div>
       </div>
 
       {quiz && (
         <>
           {/* Quiz card */}
-          <div className="card" style={{ padding: '28px 24px', marginBottom: 16 }}>
+          <div className="card mb-4" style={{ padding: '24px 22px' }}>
             {/* Type badge */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: meta?.color }}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[12px] font-semibold" style={{ color: meta?.color }}>
                 {meta?.icon} {meta?.label}
               </span>
-              {mode === 'auto' && <span style={{ fontSize: 11, color: 'var(--ink-light)' }}>Smart Mix</span>}
+              {mode === 'auto' && (
+                <span className="text-[11px] text-[var(--text-secondary)] bg-[var(--bg)] px-2 py-0.5 rounded-full border border-[var(--border)]">
+                  Smart Mix
+                </span>
+              )}
             </div>
 
             {/* SPELLING: big audio button */}
             {quiz.type === 'spelling' && (
-              <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                <button onClick={() => speak(quiz.word.word)} style={{
-                  width: 80, height: 80, borderRadius: '50%', background: 'var(--accent)', color: 'white',
-                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', transition: 'transform 0.1s'
-                }} onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.93)')} onMouseUp={e => (e.currentTarget.style.transform = '')}>
-                  <Volume2 size={32} />
+              <div className="text-center mb-5">
+                <button
+                  onClick={() => speak(quiz.word.word)}
+                  className="w-20 h-20 rounded-full bg-[var(--accent)] text-white border-none cursor-pointer flex items-center justify-center mx-auto mb-2.5 transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Volume2 size={30} />
                 </button>
-                <p style={{ fontSize: 13, color: 'var(--ink-light)' }}>Click the button to hear the word, then spell it below</p>
+                <p className="text-[13px] text-[var(--text-secondary)]">Click to hear the word, then spell it below</p>
               </div>
             )}
 
-            <h3 style={{ fontSize: quiz.type === 'matching' ? 18 : 20, lineHeight: 1.55, marginBottom: 20 }}>{quiz.question}</h3>
+            <h3
+              className="text-[var(--text)] leading-relaxed mb-5"
+              style={{ fontSize: quiz.type === 'matching' ? 17 : 19, fontWeight: 600 }}
+            >
+              {quiz.question}
+            </h3>
 
             {/* MCQ */}
             {quiz.type === 'mcq' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="grid grid-cols-2 gap-2.5">
                 {quiz.options?.map(opt => {
-                  let bg = 'var(--bg)', border = 'var(--border)', color = 'var(--ink)'
-                  if (feedback) {
-                    if (opt === quiz.answer) { bg = 'rgba(22, 163, 74, 0.1)'; border = '#16a34a'; color = '#16a34a' }
-                    else if (opt === userAnswer && feedback === 'wrong') { bg = 'rgba(220, 38, 38, 0.1)'; border = '#dc2626'; color = '#dc2626' }
-                  }
+                  const isCorrect = feedback && opt === quiz.answer
+                  const isWrong = feedback === 'wrong' && opt === userAnswer
                   return (
                     <button
                       key={opt}
                       onClick={() => selectMCQ(opt)}
                       disabled={!!feedback}
-                      aria-label={`Option: ${opt}${feedback === 'correct' && opt === quiz.answer ? ' (correct)' : ''}`}
-                      role="radio"
-                      aria-checked={userAnswer === opt}
-                      style={{
-                        padding: '14px 10px', background: bg, border: `2px solid ${border}`, borderRadius: 10,
-                        cursor: feedback ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14,
-                        color, fontWeight: 600, transition: 'all 0.18s', textAlign: 'left', lineHeight: 1.4,
-                      }}>
+                      aria-label={`Option: ${opt}`}
+                      className={cn(
+                        'p-3.5 rounded-xl border-2 text-left text-[13px] font-semibold transition-all duration-150 leading-snug',
+                        isCorrect
+                          ? 'bg-green-50 dark:bg-green-950/30 border-green-500 text-green-700 dark:text-green-400'
+                          : isWrong
+                          ? 'bg-red-50 dark:bg-red-950/30 border-red-500 text-red-700 dark:text-red-400'
+                          : feedback
+                          ? 'border-[var(--border)] text-[var(--text-secondary)] opacity-60'
+                          : 'border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--surface-hover)] cursor-pointer'
+                      )}
+                    >
                       {opt}
                     </button>
                   )
@@ -464,9 +485,9 @@ export default function QuizPage() {
 
             {/* MATCHING */}
             {quiz.type === 'matching' && matchState && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <p style={{ fontSize: 11, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Words</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="flex flex-col gap-2">
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest font-semibold mb-0.5">Words</p>
                   {matchState.wordOrder.map(word => {
                     const isMatched = matchState.matched[word]
                     const isSelected = matchState.selected === word
@@ -476,33 +497,44 @@ export default function QuizPage() {
                         key={word}
                         onClick={() => !isMatched && handleMatchClick(word, true)}
                         disabled={!!isMatched || matchDone}
-                        aria-label={`Word: ${word}${isMatched ? ' (matched)' : isSelected ? ' (selected)' : ''}`}
-                        aria-pressed={isSelected}
-                        style={{
-                          padding: '10px 12px', borderRadius: 8, border: `2px solid ${isMatched ? '#16a34a' : isSelected ? 'var(--accent)' : isWrong ? '#dc2626' : 'var(--border)'}`,
-                          background: isMatched ? 'rgba(22, 163, 74, 0.1)' : isSelected ? 'rgba(var(--accent-rgb), 0.1)' : isWrong ? 'rgba(220, 38, 38, 0.1)' : 'var(--bg)',
-                          color: isMatched ? '#16a34a' : 'var(--ink)', fontWeight: 700, cursor: isMatched ? 'default' : 'pointer',
-                          fontFamily: 'var(--font-body)', fontSize: 14, textAlign: 'left', transition: 'all 0.15s',
-                        }}>
+                        className={cn(
+                          'p-2.5 rounded-lg border-2 text-left text-[13px] font-bold transition-all duration-150',
+                          isMatched
+                            ? 'bg-green-50 dark:bg-green-950/30 border-green-500 text-green-700 dark:text-green-400 cursor-default'
+                            : isSelected
+                            ? 'border-[var(--accent)] bg-amber-50 dark:bg-amber-950/20 text-[var(--text)] cursor-pointer'
+                            : isWrong
+                            ? 'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
+                            : 'border-[var(--border)] bg-[var(--bg)] text-[var(--text)] cursor-pointer hover:border-[var(--accent)]'
+                        )}
+                      >
                         {word} {isMatched && '✓'}
                       </button>
                     )
                   })}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <p style={{ fontSize: 11, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Definitions</p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest font-semibold mb-0.5">Definitions</p>
                   {matchState.defOrder.map(def => {
                     const matchedWord = Object.entries(matchState.matched).find(([, d]) => d === def)?.[0]
                     const isMatched = !!matchedWord
                     const isWrong = matchState.wrong.includes(def)
                     return (
-                      <button key={def} onClick={() => !isMatched && matchState.selected && handleMatchClick(def, false)}
-                        disabled={isMatched || matchDone || !matchState.selected} style={{
-                          padding: '10px 12px', borderRadius: 8, border: `2px solid ${isMatched ? '#16a34a' : isWrong ? '#dc2626' : matchState.selected ? 'var(--accent)' : 'var(--border)'}`,
-                          background: isMatched ? 'rgba(22, 163, 74, 0.1)' : isWrong ? 'rgba(220, 38, 38, 0.1)' : 'var(--bg)',
-                          color: isMatched ? '#16a34a' : 'var(--ink)', cursor: isMatched ? 'default' : matchState.selected ? 'pointer' : 'default',
-                          fontFamily: 'var(--font-body)', fontSize: 12, textAlign: 'left', lineHeight: 1.4, transition: 'all 0.15s',
-                        }}>
+                      <button
+                        key={def}
+                        onClick={() => !isMatched && matchState.selected && handleMatchClick(def, false)}
+                        disabled={isMatched || matchDone || !matchState.selected}
+                        className={cn(
+                          'p-2.5 rounded-lg border-2 text-left text-[12px] transition-all duration-150 leading-snug',
+                          isMatched
+                            ? 'bg-green-50 dark:bg-green-950/30 border-green-500 text-green-700 dark:text-green-400 cursor-default'
+                            : isWrong
+                            ? 'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
+                            : matchState.selected
+                            ? 'border-[var(--border)] bg-[var(--bg)] text-[var(--text)] cursor-pointer hover:border-[var(--accent)]'
+                            : 'border-[var(--border)] bg-[var(--bg)] text-[var(--text-secondary)] cursor-default'
+                        )}
+                      >
                         {def?.slice(0, 60)}{(def?.length || 0) > 60 ? '...' : ''} {isMatched && '✓'}
                       </button>
                     )
@@ -513,30 +545,37 @@ export default function QuizPage() {
 
             {/* TEXT INPUT types */}
             {(quiz.type === 'fill_blank' || quiz.type === 'translation' || quiz.type === 'spelling' || quiz.type === 'sentence') && (
-              <div>
+              <div className="space-y-2">
                 <input
-                  className="input"
+                  className={cn(
+                    'input',
+                    feedback === 'correct' && 'border-green-500',
+                    feedback === 'wrong' && 'border-red-500'
+                  )}
                   autoFocus
                   placeholder={quiz.type === 'sentence' ? `Write a sentence with "${quiz.word.word}"...` : 'Type your answer...'}
                   value={userAnswer}
                   onChange={e => setUserAnswer(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !feedback && userAnswer.trim()) checkTextAnswer() }}
                   disabled={!!feedback}
-                  style={{
-                    fontSize: 16, marginBottom: quiz.hint && !feedback ? 0 : 12,
-                    border: feedback ? `2px solid ${feedback === 'correct' ? '#16a34a' : '#dc2626'}` : undefined,
-                  }}
                 />
                 {quiz.hint && !feedback && (
-                  <p style={{ fontSize: 12, color: 'var(--ink-light)', margin: '6px 0 12px', fontStyle: 'italic' }}>Hint: {quiz.hint}</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] italic">Hint: {quiz.hint}</p>
                 )}
                 {!feedback && (
-                  <button className="btn-primary" onClick={checkTextAnswer} disabled={!userAnswer.trim()} style={{ width: '100%', marginTop: 8 }}>
+                  <button
+                    className="btn-primary w-full py-2.5 mt-1"
+                    onClick={checkTextAnswer}
+                    disabled={!userAnswer.trim()}
+                  >
                     Check Answer
                   </button>
                 )}
                 {quiz.type === 'spelling' && !feedback && (
-                  <button onClick={() => speak(quiz.word.word)} style={{ marginTop: 8, width: '100%', background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px', cursor: 'pointer', color: 'var(--ink-light)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <button
+                    onClick={() => speak(quiz.word.word)}
+                    className="w-full py-2 bg-transparent border border-[var(--border)] rounded-lg cursor-pointer text-[var(--text-secondary)] text-[13px] flex items-center justify-center gap-1.5 hover:bg-[var(--surface-hover)] transition-colors"
+                  >
                     <Volume2 size={14} /> Hear again
                   </button>
                 )}
@@ -546,16 +585,20 @@ export default function QuizPage() {
 
           {/* Feedback panel */}
           {(feedback || matchDone) && (
-            <div className="fade-in card" style={{
-              padding: '20px 24px', marginBottom: 12,
-              background: feedback === 'correct' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.1)',
-              borderColor: feedback === 'correct' ? '#16a34a' : '#dc2626',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div className={cn(
+              'fade-in card mb-3',
+              feedback === 'correct'
+                ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+            )}>
+              <div className="flex items-center gap-2.5 mb-3">
                 {feedback === 'correct'
-                  ? <CheckCircle size={22} style={{ color: '#16a34a' }} />
-                  : <XCircle size={22} style={{ color: '#dc2626' }} />}
-                <span style={{ fontWeight: 700, fontSize: 17, color: feedback === 'correct' ? '#16a34a' : '#dc2626' }}>
+                  ? <CheckCircle size={20} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+                  : <XCircle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0" />}
+                <span className={cn(
+                  'font-bold text-[16px]',
+                  feedback === 'correct' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                )}>
                   {feedback === 'correct'
                     ? (matchDone ? 'All matched! 🎉' : 'Correct! 🎉')
                     : `Wrong — answer: ${quiz.type !== 'matching' ? quiz.answer : ''}`}
@@ -563,32 +606,44 @@ export default function QuizPage() {
               </div>
 
               {quiz.type !== 'matching' && (
-                <>
-                  <p style={{ fontSize: 14, color: 'var(--ink-light)', marginBottom: 4 }}>
-                    <strong>{quiz.word.word}</strong>
-                    {quiz.word.part_of_speech && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>({quiz.word.part_of_speech})</span>}
+                <div className="mb-3 space-y-1.5">
+                  <p className="text-[13px] text-[var(--text-secondary)]">
+                    <strong className="text-[var(--text)]">{quiz.word.word}</strong>
+                    {quiz.word.part_of_speech && (
+                      <span className="text-[var(--accent)] ml-1.5">({quiz.word.part_of_speech})</span>
+                    )}
                   </p>
-                  <p style={{ fontSize: 14, color: 'var(--ink)' }}>{quiz.word.definition}</p>
-                  {quiz.word.mongolian && <p style={{ fontSize: 13, color: 'var(--ink-light)', fontStyle: 'italic', marginTop: 2 }}>{quiz.word.mongolian}</p>}
+                  <p className="text-[13px] text-[var(--text)]">{quiz.word.definition}</p>
+                  {quiz.word.mongolian && (
+                    <p className="text-[12px] text-[var(--text-secondary)] italic">{quiz.word.mongolian}</p>
+                  )}
                   {(quiz.word.examples as string[] || [])[0] && (
-                    <p style={{ fontSize: 13, marginTop: 8, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8, fontStyle: 'italic' }}>
-                      "{(quiz.word.examples as string[])[0]}"
+                    <p className="text-[12px] italic bg-[var(--bg)] px-3 py-2 rounded-lg text-[var(--text-secondary)]">
+                      &ldquo;{(quiz.word.examples as string[])[0]}&rdquo;
                     </p>
                   )}
-                </>
+                </div>
               )}
 
-              <button className="btn-primary" onClick={nextQuiz} style={{ marginTop: 14, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                {score.total >= sessionLength - 1 ? <><Award size={16} /> Finish Session</> : <>Next Question <ChevronRight size={16} /></>}
+              <button
+                className="btn-primary w-full py-2.5 flex items-center justify-center gap-2"
+                onClick={nextQuiz}
+              >
+                {score.total >= sessionLength - 1
+                  ? <><Award size={15} /> Finish Session</>
+                  : <>Next Question <ChevronRight size={15} /></>}
               </button>
             </div>
           )}
 
           {/* Skip button when no feedback */}
           {!feedback && !matchDone && (
-            <div style={{ textAlign: 'right' }}>
-              <button onClick={nextQuiz} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-light)', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <RotateCcw size={12} /> Skip
+            <div className="text-right">
+              <button
+                onClick={nextQuiz}
+                className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1"
+              >
+                <RotateCcw size={11} /> Skip
               </button>
             </div>
           )}
