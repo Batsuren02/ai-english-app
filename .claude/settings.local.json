@@ -52,7 +52,10 @@
       "Bash(powershell -Command \"Stop-Process -Id 14140 -Force\")",
       "Bash(where node:*)",
       "Bash(where npm:*)",
-      "Bash(powershell -Command \"Stop-Process -Id 32188 -Force\")"
+      "Bash(powershell -Command \"Stop-Process -Id 32188 -Force\")",
+      "Bash(node node_modules/next/dist/bin/next build)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object -ExpandProperty OwningProcess\")",
+      "Bash(powershell -Command \"Stop-Process -Id 8392 -Force\")"
     ]
   }
 }

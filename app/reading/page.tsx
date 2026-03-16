@@ -9,9 +9,6 @@ import { BookOpen, Plus, Check } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import StatCard from '@/components/design/StatCard'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 type Phase = 'input' | 'analyze' | 'reading'
@@ -156,10 +153,7 @@ export default function ReadingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-72">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
-          <p className="text-sm text-[var(--text-secondary)]">Loading your vocabulary...</p>
-        </div>
+        <p className="text-[13px] text-[var(--text-secondary)]">Loading your vocabulary…</p>
       </div>
     )
   }
@@ -176,11 +170,12 @@ export default function ReadingPage() {
           <div className="space-y-6">
             <div>
               <label className="label text-[var(--text)] block mb-3">Paste your text</label>
-              <Textarea
+              <textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder="Paste an article, book excerpt, or any English text here..."
-                className="min-h-64 resize-none"
+                className="input w-full resize-none"
+                style={{ minHeight: 240 }}
               />
               <div className="flex justify-between items-center mt-3">
                 <p className="text-xs text-[var(--text-secondary)]">
@@ -219,7 +214,7 @@ export default function ReadingPage() {
           {/* Reading Text */}
           <SurfaceCard padding="lg">
             <h3 className="h4 text-[var(--text)] mb-4">Your Text</h3>
-            <div className="leading-relaxed text-[var(--text)] text-base p-5 bg-[var(--bg)] rounded-lg border border-[var(--border)] space-y-3">
+            <div className="text-[15px] leading-[1.85] text-[var(--text)] p-5 bg-[var(--bg)] rounded-xl border border-[var(--border)]" style={{ fontFamily: 'var(--font-body)', letterSpacing: '0.01em' }}>
               {buildHighlightedTokens(textInput, tokens).map((segment, i) => (
                 <span
                   key={i}

@@ -379,23 +379,26 @@ export default function LearnPage() {
           )}
 
           {/* Word Display */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-4">
-              <h1 className="text-7xl font-display font-bold text-[var(--text)]">{current.word}</h1>
+          <div className="space-y-3">
+            <h1 className="word-hero text-center">{current.word}</h1>
+            <div className="flex items-center justify-center gap-3">
+              {current.ipa && (
+                <p className="text-[15px] text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-monospace)' }}>
+                  {current.ipa}
+                </p>
+              )}
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  speak(current.word)
-                }}
-                className="flex-shrink-0 p-3 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all duration-150 hover:shadow-md"
+                onClick={(e) => { e.stopPropagation(); speak(current.word) }}
+                className="p-2 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all duration-150"
                 title="Pronounce word"
               >
-                <Volume2 size={28} />
+                <Volume2 size={18} />
               </button>
             </div>
-
-            {current.ipa && (
-              <p className="text-lg text-[var(--text-secondary)] font-light">{current.ipa}</p>
+            {current.part_of_speech && (
+              <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
+                {current.part_of_speech}
+              </p>
             )}
           </div>
 
@@ -444,8 +447,8 @@ export default function LearnPage() {
             <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col bg-gradient-to-br from-indigo-500/10 to-blue-500/10">
               {/* Back Card Header */}
               <div className="text-center mb-4">
-                <h2 className="h4 text-[var(--text)]">{current.word}</h2>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">Tap to flip back</p>
+                <h2 className="text-[22px] font-bold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontOpticalSizing: 'auto' }}>{current.word}</h2>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-1 uppercase tracking-widest">Tap to flip back</p>
               </div>
 
               {/* Details Content */}

@@ -8,8 +8,6 @@ import { buildWaveformData, downloadRecording, speakWord } from '@/lib/speech-ut
 import { Volume2, Download, Copy, Check, Mic } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import AudioRecorder from '@/components/AudioRecorder'
 import WaveformDisplay from '@/components/WaveformDisplay'
@@ -97,7 +95,7 @@ export default function PronunciationPage() {
       <div className="flex items-center justify-center h-72">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
-          <p className="text-sm text-[var(--text-secondary)]">Loading words...</p>
+          <p className="text-[13px] text-[var(--text-secondary)]">Loading words...</p>
         </div>
       </div>
     )
@@ -114,11 +112,11 @@ export default function PronunciationPage() {
         {/* Word Selector */}
         <SurfaceCard padding="lg" className="md:col-span-1 h-[500px] flex flex-col">
           <h3 className="h4 text-[var(--text)] mb-4">Select Word</h3>
-          <Input
+          <input
             placeholder="Search words…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="mb-4"
+            className="input mb-4 w-full"
           />
           <ScrollArea className="flex-1">
             <div className="space-y-1 pr-4">
@@ -152,7 +150,7 @@ export default function PronunciationPage() {
               <SurfaceCard padding="lg" elevation="md">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h2 className="h3 text-[var(--text)] mb-2">{selectedWord.word}</h2>
+                    <h2 className="text-[28px] font-bold italic font-display text-[var(--text)] mb-2" style={{ fontOpticalSizing: 'auto' }}>{selectedWord.word}</h2>
                     <p className="body text-[var(--text-secondary)] mb-3">{selectedWord.definition}</p>
                     {selectedWord.ipa && (
                       <p className="label text-[var(--accent)] font-mono">/{selectedWord.ipa}/</p>
@@ -227,7 +225,7 @@ export default function PronunciationPage() {
                   <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--accent)]/10 to-[var(--surface)]">
                     <div className="text-center space-y-3">
                       <p className="label text-[var(--text-secondary)]">Similarity Score</p>
-                      <div className="text-4xl font-bold text-[var(--accent)]">--</div>
+                      <div className="stat-number text-[var(--accent)]">--</div>
                       <p className="text-xs text-[var(--text-secondary)]">
                         Use Claude AI for detailed pronunciation feedback
                       </p>

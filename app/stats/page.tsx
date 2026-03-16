@@ -10,7 +10,6 @@ import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import LoadingSpinner from '@/components/design/LoadingSpinner'
-import { TextPrimary, TextSecondary } from '@/components/design/Text'
 
 export default function StatsPage() {
   const [weeklyData, setWeeklyData] = useState<any[]>([])

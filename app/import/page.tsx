@@ -8,7 +8,8 @@ import { supabase } from '@/lib/supabase'
 import type { ParsedWord } from '@/lib/csv-parser'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import SurfaceCard from '@/components/design/SurfaceCard'
+import InteractiveButton from '@/components/design/InteractiveButton'
 
 export default function ImportPage() {
   const [importError, setImportError] = useState<string>('')
@@ -78,55 +79,53 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="space-y-2">
-          <Link href="/words">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Words
-            </Button>
-          </Link>
-          <h1 className="text-3xl md:text-4xl font-bold">Bulk Import Vocabulary</h1>
-          <p className="text-muted-foreground">
-            Upload a CSV or Excel file to quickly add multiple words to your vocabulary list.
-          </p>
-        </div>
-
-        {/* Error Message */}
-        {importError && (
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <p className="text-sm text-amber-900 dark:text-amber-100">{importError}</p>
-          </div>
-        )}
-
-        {/* Instructions */}
-        <div className="bg-muted/50 border rounded-lg p-6 space-y-4">
-          <h2 className="font-semibold">How to use:</h2>
-          <ol className="space-y-2 text-sm list-decimal list-inside">
-            <li>
-              <strong>Option A:</strong> Download the CSV template below, fill it with your words, and upload it.
-            </li>
-            <li>
-              <strong>Option B:</strong> Prepare your own CSV or Excel file with these columns:
-              <span className="block mt-2 bg-background p-2 rounded font-mono text-xs">
-                word, definition, mongolian, part_of_speech, ipa, cefr_level, examples, word_family,
-                collocations, confused_with, etymology_hint, category, goal_tag
-              </span>
-            </li>
-            <li>
-              <strong>Array fields</strong> (examples, word_family, etc.) should use semicolons to separate values:
-              <span className="block mt-2 bg-background p-2 rounded font-mono text-xs">
-                word family → "family1; family2; family3"
-              </span>
-            </li>
-            <li>Required columns: <strong>word, definition, mongolian</strong></li>
-            <li>Click upload, preview your data, and confirm the import.</li>
-          </ol>
-        </div>
-
-        {/* Import Form */}
-        <ImportForm onImportComplete={handleImport} />
+    <div className="fade-in max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="space-y-3">
+        <Link href="/words">
+          <InteractiveButton variant="ghost" size="sm" className="gap-2 -ml-1">
+            <ArrowLeft size={14} />
+            Back to Words
+          </InteractiveButton>
+        </Link>
+        <h1 className="h2 text-[var(--text)]">Bulk Import</h1>
+        <p className="text-[13px] text-[var(--text-secondary)]">
+          Upload a CSV or Excel file to quickly add multiple words to your vocabulary.
+        </p>
       </div>
+
+      {/* Error Message */}
+      {importError && (
+        <div className="rounded-xl border border-[var(--warning)]/30 bg-amber-50 dark:bg-amber-950/20 p-4">
+          <p className="text-[13px] text-amber-900 dark:text-amber-200">{importError}</p>
+        </div>
+      )}
+
+      {/* Instructions */}
+      <SurfaceCard padding="lg">
+        <h2 className="text-[13px] font-semibold text-[var(--text)] mb-4">How to use</h2>
+        <ol className="space-y-3 text-[13px] text-[var(--text-secondary)] list-decimal list-inside">
+          <li>
+            <span className="font-semibold text-[var(--text)]">Option A:</span> Download the CSV template, fill it in, upload it.
+          </li>
+          <li>
+            <span className="font-semibold text-[var(--text)]">Option B:</span> Use your own CSV or Excel with these columns:
+            <code className="block mt-2 p-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              word, definition, mongolian, part_of_speech, ipa, cefr_level,{'\n'}examples, word_family, collocations, confused_with, category
+            </code>
+          </li>
+          <li>
+            <span className="font-semibold text-[var(--text)]">Array fields</span> use semicolons to separate values:
+            <code className="block mt-2 p-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] font-mono text-[11px] text-[var(--text-secondary)]">
+              "family1; family2; family3"
+            </code>
+          </li>
+          <li>Required: <span className="font-semibold text-[var(--text)]">word, definition, mongolian</span></li>
+        </ol>
+      </SurfaceCard>
+
+      {/* Import Form */}
+      <ImportForm onImportComplete={handleImport} />
+    </div>
   )
 }
