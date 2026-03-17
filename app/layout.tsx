@@ -138,6 +138,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="description" content="Spaced repetition vocabulary app for English learners" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        {/* Anti-flash: apply theme bg before React hydrates to prevent white flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme')||'light';var m={'light':'#f4f0e6','dark':'#111009','palenight':'#151b35','vampire':'#0d0917','oceanic':'#0a2535','catppuccin':'#1e1e2e','rosepine':'#191724'};var bg=m[t]||m.light;document.documentElement.style.setProperty('--bg',bg);document.documentElement.style.background=bg;}catch(e){}})()`}} />
       </head>
       <body>
         <ThemeProvider>

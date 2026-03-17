@@ -17,6 +17,7 @@ import {
  */
 export function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false)
+  const { currentTheme, setTheme, availableThemes } = useTheme()
 
   useEffect(() => {
     setMounted(true)
@@ -27,14 +28,14 @@ export function ThemeSwitcher() {
     return null
   }
 
-  const { currentTheme, setTheme, availableThemes } = useTheme()
-
   const themeLabels: Record<string, string> = {
     light: '☀️ Light',
     dark: '🌙 Dark',
     palenight: '🌌 Pale Night',
     vampire: '🧛 Vampire',
     oceanic: '🌊 Oceanic',
+    catppuccin: '🌸 Catppuccin',
+    rosepine: '🌹 Rosé Pine',
   }
 
   const handleThemeChange = (value: string) => {

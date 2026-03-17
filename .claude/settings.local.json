@@ -55,7 +55,17 @@
       "Bash(powershell -Command \"Stop-Process -Id 32188 -Force\")",
       "Bash(node node_modules/next/dist/bin/next build)",
       "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object -ExpandProperty OwningProcess\")",
-      "Bash(powershell -Command \"Stop-Process -Id 8392 -Force\")"
+      "Bash(powershell -Command \"Stop-Process -Id 8392 -Force\")",
+      "mcp__c5e037e2-c906-46d4-9b47-fc7ebd777e39__list_projects",
+      "mcp__c5e037e2-c906-46d4-9b47-fc7ebd777e39__execute_sql",
+      "mcp__c5e037e2-c906-46d4-9b47-fc7ebd777e39__restore_project",
+      "mcp__c5e037e2-c906-46d4-9b47-fc7ebd777e39__get_project",
+      "Bash(New-Item -Path \"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\app\\\\import\" -ItemType Directory -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"done\")",
+      "Bash(npx shadcn@latest add alert-dialog --yes)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useState } from 'react'
 import ImportForm from '@/components/ImportForm'
 import { supabase } from '@/lib/supabase'

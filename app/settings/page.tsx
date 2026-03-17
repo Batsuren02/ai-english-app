@@ -1,17 +1,17 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile } from '@/lib/supabase'
-import { Save, Copy, Check, AlertCircle } from 'lucide-react'
+import { Save, Copy, Check, AlertCircle, Eye } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
 import NotificationSettings from '@/components/NotificationSettings'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import FormInput from '@/components/design/FormInput'
+import { useToastContext } from '@/components/ToastProvider'
 
 export default function SettingsPage() {
+  const toast = useToastContext()
   const [profile, setProfile] = useState<Partial<UserProfile>>({
     cefr_level: 'B1', goal: 'general', daily_target_minutes: 20
   })
@@ -21,6 +21,13 @@ export default function SettingsPage() {
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
   const [singleWord, setSingleWord] = useState('')
   const [batchWords, setBatchWords] = useState('')
+  const [showMongolianHint, setShowMongolianHint] = useState(false)
+
+  useEffect(() => {
+    try {
+      setShowMongolianHint(localStorage.getItem('showMongolianHint') === 'true')
+    } catch {}
+  }, [])
 
   useEffect(() => {
     supabase.from('user_profile').select('*').single().then(({ data }) => {
@@ -39,9 +46,11 @@ export default function SettingsPage() {
 
       if (updateError) {
         setError(`Failed to save settings: ${updateError.message}`)
+        toast.error('Failed to save settings')
       } else {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
+        toast.success('Settings saved!')
       }
     } catch (err) {
       setError(`Error saving settings: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -143,6 +152,27 @@ export default function SettingsPage() {
               onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))}
             />
             <p className="text-[11px] text-[var(--text-secondary)] mt-1.5">Ideal daily practice time</p>
+          </div>
+
+          {/* Mongolian Hint Toggle */}
+          <div className="flex items-center justify-between py-3 border-t border-[var(--border)]">
+            <div>
+              <label className="label text-[var(--text)] flex items-center gap-2">
+                <Eye size={14} /> Show Mongolian hint on front of card
+              </label>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1">Display Mongolian translation on the front (before flipping)</p>
+            </div>
+            <button
+              onClick={() => {
+                const next = !showMongolianHint
+                setShowMongolianHint(next)
+                try { localStorage.setItem('showMongolianHint', String(next)) } catch {}
+                toast.info(next ? 'Mongolian hint enabled' : 'Mongolian hint disabled')
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showMongolianHint ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showMongolianHint ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
           </div>
 
           <InteractiveButton

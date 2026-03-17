@@ -1,11 +1,10 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase, Word } from '@/lib/supabase'
 import { tokenizeText, getUniqueWords, markKnownTokens, calculateComprehension, getUnknownWords, Token, buildHighlightedTokens } from '@/lib/text-tokenizer'
-import { BookOpen, Plus, Check } from 'lucide-react'
+import { BookOpen, Plus, Check, Loader2 } from 'lucide-react'
+import { useToastContext } from '@/components/ToastProvider'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import StatCard from '@/components/design/StatCard'
@@ -19,7 +18,10 @@ interface HighlightedSegment {
   isKnown?: boolean
 }
 
+const MAX_CHARS = 5000
+
 export default function ReadingPage() {
+  const toast = useToastContext()
   const [phase, setPhase] = useState<Phase>('input')
   const [textInput, setTextInput] = useState('')
   const [tokens, setTokens] = useState<Token[]>([])
@@ -31,6 +33,7 @@ export default function ReadingPage() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
+  const [addingAll, setAddingAll] = useState(false)
 
   // Load all words on mount
   useEffect(() => {
@@ -39,10 +42,12 @@ export default function ReadingPage() {
 
   const loadWords = async () => {
     try {
-      const { data } = await supabase.from('words').select('*')
+      const { data, error } = await supabase.from('words').select('*')
+      if (error) { toast.error('Failed to load vocabulary'); return }
       if (data) setWords(data)
     } catch (err) {
       console.error('Failed to load words:', err)
+      toast.error('Failed to load vocabulary')
     } finally {
       setLoading(false)
     }
@@ -75,7 +80,7 @@ export default function ReadingPage() {
         .insert({
           text_content: textInput,
           word_count: textInput.split(/\s+/).length,
-          unknown_count: unknown.length,
+          known_word_count: comp.knownCount,
           comprehension_level: comp.percentage,
         })
         .select()
@@ -105,9 +110,27 @@ export default function ReadingPage() {
       setPhase('reading')
     } catch (err) {
       console.error('Failed to analyze text:', err)
+      toast.error('Failed to analyze text. Please try again.')
     } finally {
       setAnalyzing(false)
     }
+  }
+
+  const handleAddAllUnknown = async () => {
+    const toAdd = unknownWords.filter(w => !sessionsAdded.includes(w))
+    if (toAdd.length === 0) return
+    setAddingAll(true)
+    let added = 0
+    for (const word of toAdd) {
+      try {
+        await handleAddWord(word)
+        added++
+      } catch {
+        // continue on individual failures
+      }
+    }
+    toast.success(`Added ${added} word${added !== 1 ? 's' : ''} to vocabulary!`)
+    setAddingAll(false)
   }
 
   const handleAddWord = async (word: string) => {
@@ -172,16 +195,16 @@ export default function ReadingPage() {
               <label className="label text-[var(--text)] block mb-3">Paste your text</label>
               <textarea
                 value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
+                onChange={(e) => setTextInput(e.target.value.slice(0, MAX_CHARS))}
                 placeholder="Paste an article, book excerpt, or any English text here..."
                 className="input w-full resize-none"
                 style={{ minHeight: 240 }}
               />
               <div className="flex justify-between items-center mt-3">
-                <p className="text-xs text-[var(--text-secondary)]">
-                  {textInput.length} characters · ~{Math.ceil(textInput.split(/\s+/).length)} words
+                <p className={`text-xs ${textInput.length >= MAX_CHARS ? 'text-red-500 font-semibold' : 'text-[var(--text-secondary)]'}`}>
+                  {textInput.length}/{MAX_CHARS} characters · ~{Math.ceil(textInput.split(/\s+/).filter(Boolean).length)} words
                 </p>
-                {textInput.trim() && (
+                {textInput.trim() && textInput.length < MAX_CHARS && (
                   <p className="text-xs text-[var(--accent)] font-medium">Ready to analyze</p>
                 )}
               </div>
@@ -192,6 +215,7 @@ export default function ReadingPage() {
               size="lg"
               onClick={handleAnalyze}
               isLoading={analyzing}
+              disabled={!textInput.trim() || textInput.length >= MAX_CHARS}
               className="w-full"
             >
               {analyzing ? 'Analyzing...' : 'Analyze Text'}
@@ -239,9 +263,19 @@ export default function ReadingPage() {
           {/* Unknown Words */}
           {unknownWords.length > 0 && (
             <SurfaceCard padding="lg">
-              <h3 className="h4 text-[var(--text)] mb-4">
-                Unknown Words · {unknownWords.length}
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="h4 text-[var(--text)]">Unknown Words · {unknownWords.length}</h3>
+                {unknownWords.some(w => !sessionsAdded.includes(w)) && (
+                  <button
+                    onClick={handleAddAllUnknown}
+                    disabled={addingAll}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] hover:opacity-80 transition-opacity disabled:opacity-50"
+                  >
+                    {addingAll ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    Add All ({unknownWords.filter(w => !sessionsAdded.includes(w)).length})
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {unknownWords.map((word) => (
                   <button

@@ -1,11 +1,9 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word } from '@/lib/supabase'
 import Link from 'next/link'
-import { TrendingUp, AlertTriangle, BookOpen, Mic2, FileText, Zap, ChevronRight } from 'lucide-react'
+import { TrendingUp, AlertTriangle, BookOpen, Mic2, FileText, Zap, ChevronRight, Dumbbell } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -24,34 +22,38 @@ export default function Dashboard() {
   useEffect(() => { loadDashboard() }, [])
 
   async function loadDashboard() {
-    const today = new Date().toISOString().split('T')[0]
-    const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
-      supabase.from('user_profile').select('*').single(),
-      supabase.from('words').select('id', { count: 'exact', head: true }),
-      supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
-      supabase.from('reviews').select('word_id, ease_factor, words(id, word, definition)').order('ease_factor').limit(5),
-      supabase.from('review_logs').select('created_at').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-      supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
-      supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
-    ])
-    if (profileRes.data) setProfile(profileRes.data)
-    if (wordsRes.count !== null) setTotalWords(wordsRes.count)
-    if (dueRes.count !== null) setDueCount(dueRes.count)
-    if (readingRes.count !== null) setReadingSessions(readingRes.count)
-    if (pronunciationRes.count !== null) setPronunciationAttempts(pronunciationRes.count)
-    if (weakRes.data) {
-      setWeakWords(weakRes.data.filter((r: any) => r.words).map((r: any) => ({ ...r.words, ease_factor: r.ease_factor })))
-    }
-    if (logsRes.data) {
-      const counts: Record<string, number> = {}
-      logsRes.data.forEach((log: any) => {
-        const d = log.created_at.split('T')[0]
-        counts[d] = (counts[d] || 0) + 1
-      })
-      setRecentActivity(Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0]
-        return { date: d.slice(5), count: counts[d] || 0 }
-      }))
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
+        supabase.from('user_profile').select('*').single(),
+        supabase.from('words').select('id', { count: 'exact', head: true }),
+        supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
+        supabase.from('reviews').select('word_id, ease_factor, words(id, word, definition)').order('ease_factor', { ascending: true }).limit(5),
+        supabase.from('review_logs').select('created_at').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+        supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
+        supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
+      ])
+      if (profileRes.data) setProfile(profileRes.data)
+      if (wordsRes.count !== null) setTotalWords(wordsRes.count)
+      if (dueRes.count !== null) setDueCount(dueRes.count)
+      if (readingRes.count !== null) setReadingSessions(readingRes.count)
+      if (pronunciationRes.count !== null) setPronunciationAttempts(pronunciationRes.count)
+      if (weakRes.data) {
+        setWeakWords(weakRes.data.filter((r: any) => r.words).map((r: any) => ({ ...r.words, ease_factor: r.ease_factor })))
+      }
+      if (logsRes.data) {
+        const counts: Record<string, number> = {}
+        logsRes.data.forEach((log: any) => {
+          const d = log.created_at.split('T')[0]
+          counts[d] = (counts[d] || 0) + 1
+        })
+        setRecentActivity(Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0]
+          return { date: d.slice(5), count: counts[d] || 0 }
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard:', err)
     }
     setLoading(false)
   }
@@ -196,9 +198,16 @@ export default function Dashboard() {
       {/* ── Weak Words ── */}
       {weakWords.length > 0 && (
         <SurfaceCard padding="lg">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={14} className="text-[var(--warning)]" />
-            <span className="text-[13px] font-semibold text-[var(--text)]">Needs Attention</span>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} className="text-[var(--warning)]" />
+              <span className="text-[13px] font-semibold text-[var(--text)]">Needs Attention</span>
+            </div>
+            <Link href="/drills">
+              <button className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--accent)] hover:opacity-80 transition-opacity">
+                <Dumbbell size={12} /> Drill These
+              </button>
+            </Link>
           </div>
           <div className="space-y-2.5">
             {weakWords.map((w: any) => (

@@ -1,11 +1,10 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase, Word, Review } from '@/lib/supabase'
-import { Plus, Search, Download, X, Volume2, Copy, Check, Trash2, Star, Eye } from 'lucide-react'
+import { Plus, Search, Download, X, Volume2, Copy, Check, Trash2, Star, Eye, ArrowDownAZ, SortAsc } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
+import { speakWord } from '@/lib/speech-utils'
 
 // V2.0 Components
 import SurfaceCard from '@/components/design/SurfaceCard'
@@ -15,6 +14,7 @@ import EmptyState from '@/components/design/EmptyState'
 // shadcn components
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { useToastContext } from '@/components/ToastProvider'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 const CATEGORIES = ['academic', 'business', 'daily', 'idiom', 'phrasal_verb'] as const
@@ -35,12 +36,15 @@ interface WordWithReview extends Word {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WordsPage() {
+  const toast = useToastContext()
   const [words, setWords] = useState<WordWithReview[]>([])
   const [filtered, setFiltered] = useState<WordWithReview[]>([])
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('all')
   const [filterLevel, setFilterLevel] = useState('all')
   const [filterMastery, setFilterMastery] = useState('all')
+  const [sortBy, setSortBy] = useState<'newest' | 'alpha' | 'hardest' | 'most_reviewed'>('newest')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [selectedWord, setSelectedWord] = useState<WordWithReview | null>(null)
   const [showDetails, setShowDetails] = useState(false)
@@ -60,6 +64,9 @@ export default function WordsPage() {
     category: 'daily',
   })
   const [saving, setSaving] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editForm, setEditForm] = useState<Partial<Word>>({})
+  const [lookingUp, setLookingUp] = useState(false)
 
   // ── Data loading ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -78,16 +85,21 @@ export default function WordsPage() {
     if (filterLevel !== 'all') f = f.filter((w) => w.cefr_level === filterLevel)
     if (filterMastery !== 'all') f = f.filter((w) => w.masteryLevel === filterMastery)
 
-    // Sort: needs_review first, then learning, then mastered
-    f.sort((a, b) => {
+    // Sort
+    f = [...f].sort((a, b) => {
+      if (sortBy === 'alpha') return (a.word || '').localeCompare(b.word || '')
+      if (sortBy === 'hardest') return (a.review?.ease_factor ?? 2.5) - (b.review?.ease_factor ?? 2.5)
+      if (sortBy === 'most_reviewed') return (b.review?.total_reviews ?? 0) - (a.review?.total_reviews ?? 0)
+      // Default 'newest': mastery order (needs_review first), then by created_at
       const masteryOrder = { needs_review: 0, learning: 1, mastered: 2 }
       const orderA = masteryOrder[a.masteryLevel as keyof typeof masteryOrder] ?? 3
       const orderB = masteryOrder[b.masteryLevel as keyof typeof masteryOrder] ?? 3
-      return orderA - orderB
+      if (orderA !== orderB) return orderA - orderB
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
 
     setFiltered(f)
-  }, [words, search, filterCat, filterLevel, filterMastery])
+  }, [words, search, filterCat, filterLevel, filterMastery, sortBy])
 
   async function loadWords() {
     try {
@@ -134,11 +146,12 @@ export default function WordsPage() {
         const { data: row } = await supabase.from('words').insert({ ...w }).select().single()
         if (row) await supabase.from('reviews').insert({ word_id: row.id })
       }
+      toast.success('Words imported successfully!')
       setJsonInput('')
       setShowAdd(false)
       await loadWords()
     } catch {
-      alert('Invalid JSON. Please check the format.')
+      toast.error('Invalid JSON. Please check the format.')
     }
     setSaving(false)
   }
@@ -157,7 +170,10 @@ export default function WordsPage() {
       })
       .select()
       .single()
-    if (data) await supabase.from('reviews').insert({ word_id: data.id })
+    if (data) {
+      await supabase.from('reviews').insert({ word_id: data.id })
+      toast.success(`"${manualWord.word}" added!`)
+    }
     setManualWord({
       word: '',
       definition: '',
@@ -173,10 +189,61 @@ export default function WordsPage() {
   }
 
   async function deleteWord(id: string) {
-    if (!confirm('Delete this word?')) return
+    const wordName = words.find(w => w.id === id)?.word || 'Word'
     await supabase.from('words').delete().eq('id', id)
+    toast.success(`"${wordName}" deleted`)
     setSelectedWord(null)
+    setShowDetails(false)
+    setDeleteConfirmId(null)
     await loadWords()
+  }
+
+  async function updateWord() {
+    if (!selectedWord) return
+    if (!editForm.word?.trim() || !editForm.definition?.trim()) {
+      toast.warning('Word and definition are required')
+      return
+    }
+    setSaving(true)
+    const { error } = await supabase
+      .from('words')
+      .update({ ...editForm, updated_at: new Date().toISOString() })
+      .eq('id', selectedWord.id)
+    if (!error) {
+      toast.success(`"${editForm.word || selectedWord.word}" updated!`)
+      setEditMode(false)
+      await loadWords()
+      // Update selectedWord in place so modal stays open with fresh data
+      setSelectedWord(prev => prev ? { ...prev, ...editForm } as WordWithReview : null)
+    } else {
+      toast.error('Failed to update word')
+    }
+    setSaving(false)
+  }
+
+  async function lookupWord(word: string) {
+    if (!word.trim()) return
+    setLookingUp(true)
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.trim())}`)
+      if (!res.ok) { toast.warning('Word not found in dictionary'); return }
+      const data = await res.json()
+      const entry = data[0]
+      const meaning = entry?.meanings?.[0]
+      if (!meaning) { toast.warning('No definition found'); return }
+      const defObj = meaning.definitions?.[0]
+      const ipa = entry.phonetics?.find((p: any) => p.text)?.text || ''
+      setManualWord(prev => ({
+        ...prev,
+        definition: defObj?.definition || prev.definition,
+        part_of_speech: meaning.partOfSpeech || prev.part_of_speech,
+        ipa: ipa || prev.ipa,
+      }))
+      toast.success('Definition auto-filled!')
+    } catch {
+      toast.error('Dictionary lookup failed')
+    }
+    setLookingUp(false)
   }
 
   function copyPrompt(word: string) {
@@ -191,14 +258,7 @@ export default function WordsPage() {
     Object.assign(document.createElement('a'), { href: url, download: 'words.json' }).click()
   }
 
-  function speak(text: string) {
-    if ('speechSynthesis' in window) {
-      const u = new SpeechSynthesisUtterance(text)
-      u.lang = 'en-US'
-      u.rate = 0.85
-      window.speechSynthesis.speak(u)
-    }
-  }
+
 
   // ── Helper functions ──────────────────────────────────────────────────────
   function getMasteryColor(level?: string): string {
@@ -352,6 +412,20 @@ export default function WordsPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-auto min-w-[150px]">
+                <SortAsc size={13} className="mr-1.5 text-[var(--text-secondary)]" />
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Needs Review First</SelectItem>
+                <SelectItem value="alpha">A → Z</SelectItem>
+                <SelectItem value="hardest">Hardest First</SelectItem>
+                <SelectItem value="most_reviewed">Most Reviewed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </SurfaceCard>
@@ -409,7 +483,7 @@ export default function WordsPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      speak(w.word)
+                      speakWord(w.word)
                     }}
                     className="p-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all flex-shrink-0"
                     title="Pronounce"
@@ -482,7 +556,7 @@ export default function WordsPage() {
           {/* Backdrop */}
           <div
             className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-            onClick={() => setShowDetails(false)}
+            onClick={() => { setShowDetails(false); setEditMode(false) }}
           />
 
           {/* Modal */}
@@ -494,7 +568,7 @@ export default function WordsPage() {
                   <h2 className="h3 text-[var(--text)] flex items-center gap-2 flex-wrap">
                     <span className="truncate">{selectedWord.word}</span>
                     <button
-                      onClick={() => speak(selectedWord.word)}
+                      onClick={() => speakWord(selectedWord.word)}
                       className="p-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all flex-shrink-0"
                       title="Pronounce"
                     >
@@ -517,7 +591,45 @@ export default function WordsPage() {
 
               {/* Modal body - scrollable */}
               <div className="flex-1 overflow-y-auto">
-                <div className="p-6 space-y-6">
+                {/* Edit Form */}
+                {editMode && (
+                  <div className="p-6 space-y-4">
+                    {([
+                      { key: 'word', label: 'Word', placeholder: 'e.g. eloquent' },
+                      { key: 'definition', label: 'Definition', placeholder: 'English definition…' },
+                      { key: 'mongolian', label: 'Mongolian', placeholder: 'Mongolian translation…' },
+                      { key: 'ipa', label: 'IPA', placeholder: '/ɛləkwənt/' },
+                      { key: 'part_of_speech', label: 'Part of Speech', placeholder: 'noun, verb, adjective…' },
+                    ] as const).map(({ key, label, placeholder }) => (
+                      <div key={key} className="space-y-1.5">
+                        <label className="label text-[var(--text)]">{label}</label>
+                        <Input
+                          placeholder={placeholder}
+                          value={(editForm as any)[key] || ''}
+                          onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="label text-[var(--text)]">CEFR Level</label>
+                        <Select value={editForm.cefr_level || 'B1'} onValueChange={v => setEditForm(p => ({ ...p, cefr_level: v as Word['cefr_level'] }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="label text-[var(--text)]">Category</label>
+                        <Select value={editForm.category || 'daily'} onValueChange={v => setEditForm(p => ({ ...p, category: v as Word['category'] }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace('_', ' ')}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* View Mode */}
+                {!editMode && <div className="p-6 space-y-6">
                   {/* Mastery status */}
                   <div>
                     <p className="label text-[var(--text-secondary)] mb-2 uppercase tracking-wide">
@@ -626,28 +738,91 @@ export default function WordsPage() {
                       </p>
                     </div>
                   )}
-                </div>
+                </div>}
               </div>
 
               {/* Modal footer - sticky */}
               <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-card)] flex gap-2 flex-shrink-0">
-                <InteractiveButton
-                  variant="danger"
-                  size="md"
-                  className="flex-1 flex items-center justify-center gap-2"
-                  onClick={() => {
-                    deleteWord(selectedWord.id)
-                    setShowDetails(false)
-                  }}
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </InteractiveButton>
+                {editMode ? (
+                  <>
+                    <InteractiveButton
+                      variant="ghost"
+                      size="md"
+                      className="flex-1"
+                      onClick={() => setEditMode(false)}
+                    >
+                      Cancel
+                    </InteractiveButton>
+                    <InteractiveButton
+                      variant="primary"
+                      size="md"
+                      className="flex-1 flex items-center justify-center gap-2"
+                      onClick={updateWord}
+                      isLoading={saving}
+                    >
+                      <Check size={16} />
+                      Save Changes
+                    </InteractiveButton>
+                  </>
+                ) : (
+                  <>
+                    <InteractiveButton
+                      variant="secondary"
+                      size="md"
+                      className="flex-1 flex items-center justify-center gap-2"
+                      onClick={() => {
+                        setEditForm({
+                          word: selectedWord.word,
+                          definition: selectedWord.definition,
+                          mongolian: selectedWord.mongolian || '',
+                          ipa: selectedWord.ipa || '',
+                          part_of_speech: selectedWord.part_of_speech || '',
+                          cefr_level: selectedWord.cefr_level || 'B1',
+                          category: selectedWord.category || 'daily',
+                        })
+                        setEditMode(true)
+                      }}
+                    >
+                      <Star size={16} />
+                      Edit
+                    </InteractiveButton>
+                    <InteractiveButton
+                      variant="danger"
+                      size="md"
+                      className="flex-1 flex items-center justify-center gap-2"
+                      onClick={() => setDeleteConfirmId(selectedWord.id)}
+                    >
+                      <Trash2 size={16} />
+                      Delete
+                    </InteractiveButton>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </>
       )}
+
+      {/* ── Delete Confirm Dialog ──────────────────────────────────────────── */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={open => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{words.find(w => w.id === deleteConfirmId)?.word}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the word and all its review history. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => deleteConfirmId && deleteWord(deleteConfirmId)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Add Word Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
@@ -719,13 +894,34 @@ export default function WordsPage() {
 
             {/* ── Manual tab ── */}
             <TabsContent value="manual" className="space-y-4 mt-4">
+              {/* Word + Dictionary Lookup */}
+              <div className="space-y-2">
+                <label className="label text-[var(--text)]">Word *</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. eloquent"
+                    value={manualWord.word}
+                    onChange={e => setManualWord(prev => ({ ...prev, word: e.target.value }))}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => lookupWord(manualWord.word)}
+                    disabled={lookingUp || !manualWord.word.trim()}
+                    className="flex-shrink-0 gap-1.5 border border-[var(--border)]"
+                  >
+                    {lookingUp ? '…' : '🔍 Look Up'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-[var(--text-secondary)]">Click "Look Up" to auto-fill from dictionary</p>
+              </div>
               {(
                 [
-                  { key: 'word', label: 'Word *', placeholder: 'e.g. eloquent' },
                   { key: 'definition', label: 'Definition *', placeholder: 'English definition…' },
                   { key: 'mongolian', label: 'Mongolian', placeholder: 'Mongolian translation…' },
-                  { key: 'part_of_speech', label: 'Part of Speech', placeholder: 'noun, verb, adjective…' },
                   { key: 'ipa', label: 'IPA', placeholder: '/ɛləkwənt/' },
+                  { key: 'part_of_speech', label: 'Part of Speech', placeholder: 'noun, verb, adjective…' },
                 ] as const
               ).map(({ key, label, placeholder }) => (
                 <div key={key} className="space-y-2">

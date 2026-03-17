@@ -1,11 +1,10 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase, Word } from '@/lib/supabase'
 import { buildWaveformData, downloadRecording, speakWord } from '@/lib/speech-utils'
-import { Volume2, Download, Copy, Check, Mic } from 'lucide-react'
+import { Volume2, Download, Copy, Check, Mic, CheckCircle } from 'lucide-react'
+import { useToastContext } from '@/components/ToastProvider'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -13,6 +12,7 @@ import AudioRecorder from '@/components/AudioRecorder'
 import WaveformDisplay from '@/components/WaveformDisplay'
 
 export default function PronunciationPage() {
+  const toast = useToastContext()
   const [words, setWords] = useState<Word[]>([])
   const [search, setSearch] = useState('')
   const [filteredWords, setFilteredWords] = useState<Word[]>([])
@@ -41,10 +41,12 @@ export default function PronunciationPage() {
 
   const loadWords = async () => {
     try {
-      const { data } = await supabase.from('words').select('*').order('created_at', { ascending: false }).limit(200)
+      const { data, error } = await supabase.from('words').select('*').order('created_at', { ascending: false }).limit(200)
+      if (error) { toast.error('Failed to load words'); return }
       if (data) setWords(data)
     } catch (err) {
       console.error('Failed to load words:', err)
+      toast.error('Failed to load words')
     } finally {
       setLoading(false)
     }
@@ -59,20 +61,17 @@ export default function PronunciationPage() {
 
       // Save pronunciation attempt to database
       if (selectedWord) {
-        // Convert blob to base64 for storage (if needed for playback)
-        const arrayBuffer = await blob.arrayBuffer()
-        const bytes = new Uint8Array(arrayBuffer)
-        const hex = bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '')
-
-        await supabase.from('pronunciation_attempts').insert({
+        const { error } = await supabase.from('pronunciation_attempts').insert({
           word_id: selectedWord.id,
-          audio_url: '', // Could be cloud URL if integrated with storage
+          audio_url: '',
           feedback: null,
           similarity_score: null,
         })
+        if (!error) toast.success('Recording saved ✓')
       }
     } catch (err) {
       console.error('Failed to complete recording:', err)
+      toast.error('Failed to save recording')
     }
   }
 
@@ -219,17 +218,6 @@ export default function PronunciationPage() {
                         </InteractiveButton>
                       </div>
                     )}
-                  </SurfaceCard>
-
-                  {/* Score Placeholder */}
-                  <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--accent)]/10 to-[var(--surface)]">
-                    <div className="text-center space-y-3">
-                      <p className="label text-[var(--text-secondary)]">Similarity Score</p>
-                      <div className="stat-number text-[var(--accent)]">--</div>
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        Use Claude AI for detailed pronunciation feedback
-                      </p>
-                    </div>
                   </SurfaceCard>
 
                   {/* Claude Feedback Prompt */}

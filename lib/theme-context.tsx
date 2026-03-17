@@ -59,6 +59,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.style.setProperty('--text', theme.colors.text)
     root.style.setProperty('--text-secondary', theme.colors.textSecondary)
     root.style.setProperty('--accent', theme.colors.accent)
+    root.style.setProperty('--accent-secondary', theme.colors.accentSecondary)
     root.style.setProperty('--accent-light', theme.colors.accentLight)
     root.style.setProperty('--border', theme.colors.border)
     root.style.setProperty('--border-light', theme.colors.borderLight)
@@ -93,11 +94,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     currentTheme,
     setTheme,
     availableThemes: getThemeNames(),
-  }
-
-  // Don't render children until mounted to avoid hydration mismatch
-  if (!mounted) {
-    return <>{children}</>
   }
 
   return (

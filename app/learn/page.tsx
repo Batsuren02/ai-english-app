@@ -1,23 +1,26 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState, useRef } from 'react'
 import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
+import { speakWord } from '@/lib/speech-utils'
 import { interleaveWords, parseInterleaveConfig } from '@/lib/interleaving'
-import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame } from 'lucide-react'
+import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame, ThumbsUp, ThumbsDown } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
+import { useToastContext } from '@/components/ToastProvider'
 
 type WordWithReview = Word & { review: Review; isNew?: boolean }
 type SessionResult = { word: Word; quality: number; correct: boolean }
-type SwipeState = 'idle' | 'left' | 'right'
+
+const SWIPE_THRESHOLD = 80  // px to commit a swipe
+const DISMISS_DISTANCE = 600 // px to fly off-screen
 
 export default function LearnPage() {
+  const toast = useToastContext()
   const [dueWords, setDueWords] = useState<WordWithReview[]>([])
   const [currentIdx, setCurrentIdx] = useState(0)
   const [showDetails, setShowDetails] = useState(false)
@@ -26,7 +29,18 @@ export default function LearnPage() {
   const [loading, setLoading] = useState(true)
   const [newCount, setNewCount] = useState(0)
   const [dueCount, setDueCount] = useState(0)
-  const [swipeState, setSwipeState] = useState<SwipeState>('idle')
+
+  // Real-time drag state
+  const [dragX, setDragX] = useState(0)
+  const isDraggingRef = useRef(false)
+
+  // Undo state
+  const [undoVisible, setUndoVisible] = useState(false)
+  const undoDataRef = useRef<{ word: WordWithReview; prevIdx: number; prevReview: Review } | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Mongolian hint preference
+  const [showMongolianHint, setShowMongolianHint] = useState(false)
 
   const startTimeRef = useRef(Date.now())
   const swipeStartX = useRef<number | null>(null)
@@ -34,19 +48,20 @@ export default function LearnPage() {
   const cardRef = useRef<HTMLDivElement>(null)
   const isSwiping = useRef(false)
 
-  useEffect(() => { loadDueWords() }, [])
+  useEffect(() => {
+    loadDueWords()
+    try { setShowMongolianHint(localStorage.getItem('showMongolianHint') === 'true') } catch {}
+  }, [])
 
   async function loadDueWords() {
     const today = new Date().toISOString().split('T')[0]
-
-    // Get due words (SRS scheduled)
+    try {
     const { data: due } = await supabase
       .from('reviews')
       .select('*, words(*)')
       .lte('next_review', today)
       .limit(15)
 
-    // Get new words (no review yet = never reviewed)
     const { data: allWords } = await supabase.from('words').select('id').limit(200)
     const { data: reviewedIds } = await supabase.from('reviews').select('word_id').gt('total_reviews', 0)
     const reviewedSet = new Set((reviewedIds || []).map((r: any) => r.word_id))
@@ -68,34 +83,30 @@ export default function LearnPage() {
     setDueCount(dueItems.length)
     setNewCount(newWordsFull.length)
 
-    // Load user profile for interleaving config
     const { data: profile } = await supabase.from('user_profile').select('*').single()
     const interleaveConfig = parseInterleaveConfig(profile)
-
-    // Interleave using new algorithm
     const interleaved: WordWithReview[] = interleaveWords(dueItems, newWordsFull, interleaveConfig)
 
     setDueWords(interleaved)
     setLoading(false)
     startTimeRef.current = Date.now()
+    } catch (err) {
+      console.error('Failed to load due words:', err)
+      toast.error('Failed to load review session. Please refresh.')
+      setLoading(false)
+    }
   }
 
   const current = dueWords[currentIdx]
 
-  function speak(text: string) {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text)
-      u.lang = 'en-US'; u.rate = 0.85
-      window.speechSynthesis.speak(u)
-    }
-  }
 
-  async function autoRateWord(direction: 'left' | 'right') {
+
+  async function submitRating(quality: number, direction: string = 'button') {
     if (!current) return
 
-    // Quality based on swipe direction: left (✗) = 1 (fail), right (✓) = 4 (good)
-    const quality = direction === 'right' ? 4 : 1
+    // Save undo snapshot before mutating
+    undoDataRef.current = { word: current, prevIdx: currentIdx, prevReview: current.review }
+
     const sm2 = calculateSM2(quality, current.review.ease_factor, current.review.interval_days, current.review.repetitions)
     const timeMs = Date.now() - startTimeRef.current
 
@@ -131,7 +142,11 @@ export default function LearnPage() {
     })
 
     setResults(prev => [...prev, { word: current, quality, correct: quality >= 3 }])
-    setSwipeState('idle')
+
+    // Show undo pill for 5 seconds
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    setUndoVisible(true)
+    undoTimerRef.current = setTimeout(() => setUndoVisible(false), 5000)
 
     if (currentIdx + 1 >= dueWords.length) {
       setSessionDone(true)
@@ -142,16 +157,61 @@ export default function LearnPage() {
     }
   }
 
+  async function handleUndo() {
+    const snap = undoDataRef.current
+    if (!snap) return
+    setUndoVisible(false)
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+
+    // Restore DB to previous review state
+    const r = snap.prevReview
+    if (r.id) {
+      await supabase.from('reviews').update({
+        ease_factor: r.ease_factor,
+        interval_days: r.interval_days,
+        repetitions: r.repetitions,
+        next_review: r.next_review,
+        last_reviewed: r.last_reviewed,
+        total_reviews: r.total_reviews,
+        correct_count: r.correct_count,
+        streak: r.streak,
+      }).eq('word_id', snap.word.id)
+    }
+
+    // Remove last result and go back to that word
+    setResults(prev => prev.slice(0, -1))
+    setCurrentIdx(snap.prevIdx)
+    setSessionDone(false)
+    setShowDetails(false)
+    setDragX(0)
+    startTimeRef.current = Date.now()
+    undoDataRef.current = null
+  }
+
+  async function autoRateWord(direction: 'left' | 'right') {
+    const quality = direction === 'right' ? 4 : 1
+    await submitRating(quality, direction)
+  }
+
+  async function rateWithQuality(quality: number) {
+    // Animate card off screen before rating
+    isDraggingRef.current = false
+    setDragX(quality >= 3 ? DISMISS_DISTANCE : -DISMISS_DISTANCE)
+    await new Promise(r => setTimeout(r, 280))
+    setDragX(0)
+    await submitRating(quality, `rate_${quality}`)
+  }
+
+  // ─── Swipe Handlers ───────────────────────────────────────────────────────
+
   function handleCardDown(e: React.MouseEvent | React.TouchEvent) {
     if (showDetails) return
-
     const x = 'touches' in e ? e.touches[0]?.clientX : (e as React.MouseEvent).clientX
     const y = 'touches' in e ? e.touches[0]?.clientY : (e as React.MouseEvent).clientY
-
-    swipeStartX.current = x || null
-    swipeStartY.current = y || null
+    swipeStartX.current = x ?? null
+    swipeStartY.current = y ?? null
     isSwiping.current = false
-    setSwipeState('idle')
+    isDraggingRef.current = false
   }
 
   function handleCardMove(e: React.MouseEvent | React.TouchEvent) {
@@ -159,49 +219,83 @@ export default function LearnPage() {
 
     const x = 'touches' in e ? e.touches[0]?.clientX : (e as React.MouseEvent).clientX
     const y = 'touches' in e ? e.touches[0]?.clientY : (e as React.MouseEvent).clientY
-
     if (!x || !y) return
 
     const deltaX = x - swipeStartX.current
     const deltaY = y - (swipeStartY.current || 0)
-    const absX = Math.abs(deltaX)
-    const absY = Math.abs(deltaY)
 
-    // Check if it's a horizontal swipe (not vertical scroll)
-    if (absX > 10 && absX > absY) {
-      isSwiping.current = true
-      if (absX > 30) {
-        setSwipeState(deltaX < 0 ? 'left' : 'right')
+    if (!isSwiping.current) {
+      if (Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        isSwiping.current = true
+      } else {
+        return
       }
     }
+
+    isDraggingRef.current = true
+    setDragX(deltaX)
   }
 
   async function handleCardUp(e: React.MouseEvent | React.TouchEvent) {
-    if (!swipeStartX.current || showDetails) {
-      setSwipeState('idle')
-      swipeStartX.current = null
-      isSwiping.current = false
-      return
+    const currentDragX = dragX
+
+    if (isSwiping.current && Math.abs(currentDragX) > SWIPE_THRESHOLD) {
+      const direction = currentDragX > 0 ? 'right' : 'left'
+      // Fly off screen
+      isDraggingRef.current = false
+      setDragX(direction === 'right' ? DISMISS_DISTANCE : -DISMISS_DISTANCE)
+      await new Promise(r => setTimeout(r, 280))
+      // Reset position instantly before next card
+      setDragX(0)
+      await autoRateWord(direction)
+    } else {
+      // Snap back
+      isDraggingRef.current = false
+      setDragX(0)
     }
 
-    const x = 'changedTouches' in e ? e.changedTouches[0]?.clientX : (e as React.MouseEvent).clientX
-    if (!x) return
-
-    const deltaX = x - swipeStartX.current
-
-    // Trigger swipe if moved far enough
-    if (isSwiping.current && Math.abs(deltaX) > 50) {
-      if (deltaX < -50) {
-        await autoRateWord('left')
-      } else if (deltaX > 50) {
-        await autoRateWord('right')
-      }
-    }
-
-    setSwipeState('idle')
     swipeStartX.current = null
     isSwiping.current = false
   }
+
+  function handleCardLeave() {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false
+      setDragX(0)
+      swipeStartX.current = null
+      isSwiping.current = false
+    }
+  }
+
+  // ─── Button Controls ──────────────────────────────────────────────────────
+
+  async function handleButtonRate(direction: 'left' | 'right') {
+    isDraggingRef.current = false
+    setDragX(direction === 'right' ? DISMISS_DISTANCE : -DISMISS_DISTANCE)
+    await new Promise(r => setTimeout(r, 280))
+    setDragX(0)
+    await autoRateWord(direction)
+  }
+
+  // ─── Derived Values ───────────────────────────────────────────────────────
+
+  const rotation = dragX * 0.06
+  const cardOpacity = Math.max(0, 1 - Math.abs(dragX) / 400)
+  const rightProgress = Math.min(Math.max(dragX / SWIPE_THRESHOLD, 0), 1.2)
+  const leftProgress = Math.min(Math.max(-dragX / SWIPE_THRESHOLD, 0), 1.2)
+  const overlayOpacity = Math.min(Math.abs(dragX) / 180, 0.4)
+  const isSwipingRight = dragX > 0
+  const overlayColor = isSwipingRight
+    ? `rgba(34, 197, 94, ${overlayOpacity})`
+    : `rgba(239, 68, 68, ${overlayOpacity})`
+
+  const cardTransition = isDraggingRef.current
+    ? 'none'
+    : dragX === 0
+      ? 'transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 450ms ease'
+      : 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1), opacity 280ms ease'
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   if (loading) return (
     <div className="flex items-center justify-center h-72">
@@ -232,22 +326,9 @@ export default function LearnPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <StatCard
-            label="Reviewed"
-            value={results.length}
-            color="var(--accent)"
-          />
-          <StatCard
-            label="Correct"
-            value={correct}
-            color="var(--success)"
-            trend={{ direction: 'up', percent: correct }}
-          />
-          <StatCard
-            label="Accuracy"
-            value={`${accuracy}%`}
-            color="var(--accent)"
-          />
+          <StatCard label="Reviewed" value={results.length} color="var(--accent)" />
+          <StatCard label="Correct" value={correct} color="var(--success)" trend={{ direction: 'up', percent: correct }} />
+          <StatCard label="Accuracy" value={`${accuracy}%`} color="var(--accent)" />
         </div>
 
         <SurfaceCard padding="lg">
@@ -256,11 +337,9 @@ export default function LearnPage() {
             {results.map(({ word, correct }, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-[var(--border)] last:border-0">
                 <div className="flex-shrink-0">
-                  {correct ? (
-                    <CheckCircle size={18} className="text-[var(--success)]" />
-                  ) : (
-                    <XCircle size={18} className="text-[var(--error)]" />
-                  )}
+                  {correct
+                    ? <CheckCircle size={18} className="text-[var(--success)]" />
+                    : <XCircle size={18} className="text-[var(--error)]" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-[var(--text)] text-sm">{word.word}</p>
@@ -297,7 +376,7 @@ export default function LearnPage() {
 
   return (
     <div className="fade-in max-w-2xl mx-auto space-y-6">
-      {/* Session Header with Stats */}
+      {/* Session Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="h3 text-[var(--text)]">Learning Session</h1>
@@ -312,7 +391,7 @@ export default function LearnPage() {
         </div>
       </div>
 
-      {/* Progress Bar - Detailed */}
+      {/* Progress Bar */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <span className="label text-[var(--text-secondary)]">Progress</span>
@@ -321,15 +400,12 @@ export default function LearnPage() {
         <div className="w-full h-3 bg-[var(--border)] rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/50 rounded-full"
-            style={{
-              width: `${progressPercent}%`,
-              transition: 'width 800ms cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
+            style={{ width: `${progressPercent}%`, transition: 'width 800ms cubic-bezier(0.4, 0, 0.2, 1)' }}
           />
         </div>
       </div>
 
-      {/* Swipeable Word Card - 3D Flip */}
+      {/* Swipeable Word Card */}
       <div
         ref={cardRef}
         onTouchStart={handleCardDown}
@@ -338,19 +414,16 @@ export default function LearnPage() {
         onMouseDown={handleCardDown}
         onMouseMove={handleCardMove}
         onMouseUp={handleCardUp}
-        onMouseLeave={() => {
-          setSwipeState('idle')
-          swipeStartX.current = null
-          isSwiping.current = false
-        }}
-        className={`relative w-full h-[500px] cursor-grab active:cursor-grabbing rounded-2xl select-none ${
-          swipeState === 'left' ? '-translate-x-96 opacity-50' : swipeState === 'right' ? 'translate-x-96 opacity-50' : 'translate-x-0 opacity-100'
-        }`}
+        onMouseLeave={handleCardLeave}
+        className="relative w-full h-[500px] cursor-grab active:cursor-grabbing rounded-2xl select-none"
         style={{
           perspective: '1000px',
           touchAction: 'none',
           userSelect: 'none',
-          transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+          transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
+          opacity: cardOpacity,
+          transition: cardTransition,
+          transformOrigin: 'center bottom',
         }}
       >
         {/* Card Flip Container */}
@@ -363,97 +436,179 @@ export default function LearnPage() {
             transition: 'transform 700ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
             cursor: 'pointer'
           }}
-          onClick={() => setShowDetails(!showDetails)}
+          onClick={() => {
+            if (!isSwiping.current && Math.abs(dragX) < 5) {
+              setShowDetails(!showDetails)
+            }
+          }}
         >
-          {/* Front of Card - Word Display */}
+          {/* ── Front of Card ────────────────────────────────────── */}
           <div
             className="absolute w-full h-full select-none"
             style={{ backfaceVisibility: 'hidden', touchAction: 'none' }}
           >
-            <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
-          {/* Top Right Badge */}
-          {current.isNew && (
-            <div className="absolute top-4 right-4">
-              <span className="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">NEW</span>
-            </div>
-          )}
+            <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)] overflow-hidden">
 
-          {/* Word Display */}
-          <div className="space-y-3">
-            <h1 className="word-hero text-center">{current.word}</h1>
-            <div className="flex items-center justify-center gap-3">
-              {current.ipa && (
-                <p className="text-[15px] text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-monospace)' }}>
-                  {current.ipa}
-                </p>
+              {/* Progressive color overlay */}
+              {dragX !== 0 && (
+                <div
+                  style={{
+                    position: 'absolute', inset: 0, borderRadius: 'inherit',
+                    background: overlayColor,
+                    pointerEvents: 'none',
+                    transition: 'none',
+                    zIndex: 1,
+                  }}
+                />
               )}
-              <button
-                onClick={(e) => { e.stopPropagation(); speak(current.word) }}
-                className="p-2 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all duration-150"
-                title="Pronounce word"
-              >
-                <Volume2 size={18} />
-              </button>
-            </div>
-            {current.part_of_speech && (
-              <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
-                {current.part_of_speech}
-              </p>
-            )}
-          </div>
 
-          {/* Swipe Instructions and Visual Indicators */}
-          <div className="space-y-4 mt-auto pt-6 border-t border-[var(--border)]">
-            {/* Visual Swipe Indicators */}
-            <div className="flex justify-between items-center px-4">
+              {/* GOT IT stamp (right swipe) */}
               <div
-                className={`flex items-center gap-2 ${swipeState === 'left' ? 'text-red-500' : 'text-[var(--text-secondary)]'}`}
                 style={{
-                  transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                  opacity: swipeState === 'left' ? 1 : 0.5,
-                  transform: swipeState === 'left' ? 'translateX(-4px)' : 'translateX(0)'
+                  position: 'absolute', top: 28, left: 24, zIndex: 10,
+                  opacity: rightProgress,
+                  transform: `rotate(-18deg) scale(${0.7 + rightProgress * 0.35})`,
+                  pointerEvents: 'none',
+                  transition: isDraggingRef.current ? 'none' : 'all 150ms ease',
                 }}
               >
-                <XCircle size={24} />
-                <span className="font-semibold text-sm">Not Yet</span>
+                <div style={{
+                  border: '3px solid #22c55e',
+                  color: '#22c55e',
+                  padding: '4px 14px',
+                  borderRadius: '6px',
+                  fontWeight: 900,
+                  fontSize: '22px',
+                  fontFamily: 'var(--font-display, serif)',
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
+                  lineHeight: 1.2,
+                  textShadow: '0 0 12px rgba(34,197,94,0.4)',
+                  boxShadow: '0 0 0 1px rgba(34,197,94,0.2)',
+                }}>
+                  GOT IT ✓
+                </div>
               </div>
-              <div className="text-xs text-[var(--text-secondary)] font-medium">Swipe to rate</div>
+
+              {/* NOT YET stamp (left swipe) */}
               <div
-                className={`flex items-center gap-2 ${swipeState === 'right' ? 'text-green-500' : 'text-[var(--text-secondary)]'}`}
                 style={{
-                  transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                  opacity: swipeState === 'right' ? 1 : 0.5,
-                  transform: swipeState === 'right' ? 'translateX(4px)' : 'translateX(0)'
+                  position: 'absolute', top: 28, right: 24, zIndex: 10,
+                  opacity: leftProgress,
+                  transform: `rotate(18deg) scale(${0.7 + leftProgress * 0.35})`,
+                  pointerEvents: 'none',
+                  transition: isDraggingRef.current ? 'none' : 'all 150ms ease',
                 }}
               >
-                <span className="font-semibold text-sm">Got It!</span>
-                <CheckCircle size={24} />
+                <div style={{
+                  border: '3px solid #ef4444',
+                  color: '#ef4444',
+                  padding: '4px 14px',
+                  borderRadius: '6px',
+                  fontWeight: 900,
+                  fontSize: '22px',
+                  fontFamily: 'var(--font-display, serif)',
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
+                  lineHeight: 1.2,
+                  textShadow: '0 0 12px rgba(239,68,68,0.4)',
+                  boxShadow: '0 0 0 1px rgba(239,68,68,0.2)',
+                }}>
+                  ✗ NOPE
+                </div>
               </div>
-            </div>
 
-            {/* Hint Text */}
-            <p className="label text-[var(--text-secondary)] text-center text-sm cursor-pointer hover:text-[var(--accent)] transition-colors">
-              Tap card to flip
-            </p>
-          </div>
+              {/* NEW badge */}
+              {current.isNew && (
+                <div className="absolute top-4 right-4 z-20">
+                  <span className="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">NEW</span>
+                </div>
+              )}
+
+              {/* Word Display */}
+              <div className="space-y-3 relative z-0">
+                <h1 className="word-hero text-center">{current.word}</h1>
+                <div className="flex items-center justify-center gap-3">
+                  {current.ipa && (
+                    <p className="text-[15px] text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-monospace)' }}>
+                      {current.ipa}
+                    </p>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); speakWord(current.word) }}
+                    className="p-2 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all duration-150"
+                    title="Pronounce word"
+                  >
+                    <Volume2 size={18} />
+                  </button>
+                </div>
+                {current.part_of_speech && (
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
+                    {current.part_of_speech}
+                  </p>
+                )}
+                {showMongolianHint && current.mongolian && (
+                  <p className="text-center text-sm text-[var(--text-secondary)] italic opacity-70 mt-1">
+                    {current.mongolian}
+                  </p>
+                )}
+              </div>
+
+              {/* Swipe Indicators + Instructions */}
+              <div className="space-y-4 mt-auto pt-6 border-t border-[var(--border)] relative z-0">
+                <div className="flex justify-between items-center px-4">
+                  {/* Left indicator */}
+                  <div
+                    className="flex items-center gap-2"
+                    style={{
+                      opacity: 0.3 + leftProgress * 0.7,
+                      transform: `translateX(${-leftProgress * 8}px) scale(${0.9 + leftProgress * 0.15})`,
+                      color: leftProgress > 0.1 ? `rgba(239, 68, 68, ${0.5 + leftProgress * 0.5})` : 'var(--text-secondary)',
+                      transition: isDraggingRef.current ? 'none' : 'all 200ms ease',
+                    }}
+                  >
+                    <XCircle size={24} />
+                    <span className="font-semibold text-sm">Not Yet</span>
+                  </div>
+
+                  <div className="text-xs text-[var(--text-secondary)] font-medium">
+                    {showDetails ? 'Flip to swipe' : 'Swipe to rate'}
+                  </div>
+
+                  {/* Right indicator */}
+                  <div
+                    className="flex items-center gap-2"
+                    style={{
+                      opacity: 0.3 + rightProgress * 0.7,
+                      transform: `translateX(${rightProgress * 8}px) scale(${0.9 + rightProgress * 0.15})`,
+                      color: rightProgress > 0.1 ? `rgba(34, 197, 94, ${0.5 + rightProgress * 0.5})` : 'var(--text-secondary)',
+                      transition: isDraggingRef.current ? 'none' : 'all 200ms ease',
+                    }}
+                  >
+                    <span className="font-semibold text-sm">Got It!</span>
+                    <CheckCircle size={24} />
+                  </div>
+                </div>
+
+                <p className="label text-[var(--text-secondary)] text-center text-sm cursor-pointer hover:text-[var(--accent)] transition-colors">
+                  Tap card to flip
+                </p>
+              </div>
             </SurfaceCard>
           </div>
 
-          {/* Back of Card - Details */}
+          {/* ── Back of Card ─────────────────────────────────────── */}
           <div
             className="absolute w-full h-full select-none"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', touchAction: 'none' }}
           >
             <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col bg-gradient-to-br from-indigo-500/10 to-blue-500/10">
-              {/* Back Card Header */}
               <div className="text-center mb-4">
-                <h2 className="text-[22px] font-bold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontOpticalSizing: 'auto' }}>{current.word}</h2>
-                <p className="text-[11px] text-[var(--text-secondary)] mt-1 uppercase tracking-widest">Tap to flip back</p>
+                <h2 className="text-[22px] font-bold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>{current.word}</h2>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-1 uppercase tracking-widest">Tap to flip back & swipe</p>
               </div>
 
-              {/* Details Content */}
               <div className="flex-1 overflow-y-auto space-y-4">
-                {/* Tags */}
                 <div className="flex flex-wrap gap-2 justify-center">
                   {current.part_of_speech && (
                     <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-3 py-1.5 rounded-lg">{current.part_of_speech}</span>
@@ -463,7 +618,6 @@ export default function LearnPage() {
                   )}
                 </div>
 
-                {/* Definition */}
                 <div className="text-left">
                   <p className="label text-[var(--text-secondary)] mb-1.5 text-xs">Definition</p>
                   <p className="body text-[var(--text)] text-sm">{current.definition}</p>
@@ -472,7 +626,6 @@ export default function LearnPage() {
                   )}
                 </div>
 
-                {/* Example */}
                 {examples.length > 0 && (
                   <div className="text-left">
                     <p className="label text-[var(--text-secondary)] mb-1.5 text-xs">Example</p>
@@ -480,7 +633,6 @@ export default function LearnPage() {
                   </div>
                 )}
 
-                {/* Etymology */}
                 {current.etymology_hint && (
                   <div className="text-left p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
                     <p className="text-xs text-amber-700 dark:text-amber-300">💡 {current.etymology_hint}</p>
@@ -488,16 +640,71 @@ export default function LearnPage() {
                 )}
               </div>
 
-              {/* Flip Hint */}
-              <p className="label text-[var(--text-secondary)] text-center text-xs mt-4 cursor-pointer hover:text-[var(--accent)] transition-colors">
-                Tap to flip back & swipe
+              {/* 4-Level Rating Buttons */}
+              <div className="mt-4 pt-4 border-t border-[var(--border)]" onClick={e => e.stopPropagation()}>
+                <p className="text-xs text-[var(--text-secondary)] text-center mb-3 uppercase tracking-widest font-semibold">How well did you know it?</p>
+                <div className="flex gap-2 justify-center">
+                  {[
+                    { label: 'Again', q: 0, color: '#ef4444', bg: 'rgba(239,68,68,0.1)', hover: 'rgba(239,68,68,0.2)' },
+                    { label: 'Hard',  q: 2, color: '#f97316', bg: 'rgba(249,115,22,0.1)', hover: 'rgba(249,115,22,0.2)' },
+                    { label: 'Good',  q: 3, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', hover: 'rgba(59,130,246,0.2)' },
+                    { label: 'Easy',  q: 5, color: '#22c55e', bg: 'rgba(34,197,94,0.1)',  hover: 'rgba(34,197,94,0.2)' },
+                  ].map(({ label, q, color, bg }) => (
+                    <button
+                      key={q}
+                      onClick={() => rateWithQuality(q)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95 hover:opacity-90"
+                      style={{ background: bg, color, border: `1.5px solid ${color}40` }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="label text-[var(--text-secondary)] text-center text-xs mt-3 cursor-pointer hover:text-[var(--accent)] transition-colors">
+                Tap card to flip back
               </p>
             </SurfaceCard>
           </div>
         </div>
       </div>
 
-      {/* Session Results Summary Card */}
+      {/* Button Controls (desktop-friendly) */}
+      {!showDetails && (
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={() => handleButtonRate('left')}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-95"
+            style={{
+              background: 'rgba(239,68,68,0.1)',
+              color: '#ef4444',
+              border: '1.5px solid rgba(239,68,68,0.3)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.1)')}
+          >
+            <ThumbsDown size={18} />
+            Not Yet
+          </button>
+          <button
+            onClick={() => handleButtonRate('right')}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-95"
+            style={{
+              background: 'rgba(34,197,94,0.1)',
+              color: '#22c55e',
+              border: '1.5px solid rgba(34,197,94,0.3)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.2)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.1)')}
+          >
+            Got It!
+            <ThumbsUp size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* Session Results Summary */}
       {results.length > 0 && (
         <SurfaceCard padding="md" className="bg-gradient-to-r from-green-500/10 to-green-400/5 border border-green-500/20">
           <div className="flex items-center gap-3">
@@ -514,6 +721,20 @@ export default function LearnPage() {
             </div>
           </div>
         </SurfaceCard>
+      )}
+
+      {/* Undo Pill */}
+      {undoVisible && undoDataRef.current && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-full shadow-lg border border-[var(--border)] bg-[var(--surface)]"
+          style={{ animation: 'scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+          <span className="text-sm text-[var(--text)]">Swiped &ldquo;{undoDataRef.current.word.word}&rdquo;</span>
+          <button
+            onClick={handleUndo}
+            className="text-sm font-bold text-[var(--accent)] hover:opacity-80 transition-opacity"
+          >
+            Undo
+          </button>
+        </div>
       )}
     </div>
   )

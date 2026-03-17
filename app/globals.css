@@ -18,7 +18,8 @@
   --text: #1c1917;
   --text-secondary: #78716c;
   --accent: #c2650a;
-  --accent-light: #fef3c7;
+  --accent-secondary: #3d6b5e;
+  --accent-light: #fdebd6;
   --border: #e2ddd5;
   --border-light: #ede9e3;
   --success: #15803d;
@@ -90,7 +91,8 @@
   --text: #e9e5dc;
   --text-secondary: #9c9587;
   --accent: #f0970a;
-  --accent-light: #451a03;
+  --accent-secondary: #5bb8a8;
+  --accent-light: #3d2408;
   --border: #332f27;
   --border-light: #423d34;
   --success: #22c55e;
@@ -545,10 +547,7 @@ h1, h2, h3, h4 {
 .rounded-xl { border-radius: var(--radius-xl); }
 .rounded-full { border-radius: var(--radius-full); }
 
-/* Smooth Color Transitions */
-* {
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-}
+/* Smooth Color Transitions are already handled in the * rule above */
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

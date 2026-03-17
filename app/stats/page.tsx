@@ -1,15 +1,15 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle } from 'lucide-react'
+import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, BookOpen } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import LoadingSpinner from '@/components/design/LoadingSpinner'
+import EmptyState from '@/components/design/EmptyState'
+import Link from 'next/link'
 
 export default function StatsPage() {
   const [weeklyData, setWeeklyData] = useState<any[]>([])
@@ -29,7 +29,7 @@ export default function StatsPage() {
     const [logsRes, wordsRes, reviewsRes, profileRes] = await Promise.all([
       supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()),
       supabase.from('words').select('id, cefr_level, category'),
-      supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor').limit(10),
+      supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor', { ascending: true }).limit(10),
       supabase.from('user_profile').select('*').single(),
     ])
 
@@ -65,7 +65,7 @@ export default function StatsPage() {
         if (!types[l.quiz_type]) types[l.quiz_type] = { total: 0, correct: 0 }
         types[l.quiz_type].total++; if (l.result >= 3) types[l.quiz_type].correct++
       })
-      setQuizTypeData(Object.entries(types).map(([type, v]) => ({ type, accuracy: Math.round(v.correct / v.total * 100), count: v.total })))
+      setQuizTypeData(Object.entries(types).map(([type, v]) => ({ type, accuracy: v.total > 0 ? Math.round(v.correct / v.total * 100) : 0, count: v.total })))
     }
 
     if (wordsRes.data) {
@@ -150,6 +150,19 @@ export default function StatsPage() {
     <div className="flex items-center justify-center h-72">
       <LoadingSpinner size="md" label="Loading your stats..." />
     </div>
+  )
+
+  if (totalReviews === 0 && totalWords === 0) return (
+    <EmptyState
+      icon={<TrendingUp size={56} className="text-[var(--accent)]" />}
+      title="No stats yet"
+      description="Start reviewing words to see your progress, accuracy, and streaks here."
+      action={
+        <Link href="/learn">
+          <InteractiveButton variant="primary" size="md">Start Reviewing</InteractiveButton>
+        </Link>
+      }
+    />
   )
 
   return (

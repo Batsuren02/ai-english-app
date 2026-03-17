@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState, useRef } from 'react'
 import { supabase, Word, UserProfile } from '@/lib/supabase'
 import {
@@ -11,12 +9,14 @@ import {
   Quiz, QuizType
 } from '@/lib/quiz-generator'
 import { pickInterleavedWord, parseInterleaveConfig } from '@/lib/interleaving'
+import { speakWord } from '@/lib/speech-utils'
 import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
+import { useToastContext } from '@/components/ToastProvider'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
   mcq:         { label: 'Multiple Choice', icon: '🔤', desc: 'Choose the correct word from 4 options', color: '#2563eb' },
@@ -48,6 +48,7 @@ export default function QuizPage() {
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [matchDone, setMatchDone] = useState(false)
   const startTimeRef = useRef(Date.now())
+  const toast = useToastContext()
 
   useEffect(() => { loadData() }, [])
 
@@ -84,14 +85,7 @@ export default function QuizPage() {
     setLoading(false)
   }
 
-  function speak(text: string) {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text)
-      u.lang = 'en-US'; u.rate = 0.82
-      window.speechSynthesis.speak(u)
-    }
-  }
+
 
   function buildQuiz(type: QuizType): Quiz | null {
     if (type === 'matching') return generateMatching(words)
@@ -110,7 +104,13 @@ export default function QuizPage() {
   }
 
   function nextQuiz() {
-    if (score.total >= sessionLength) { setSessionDone(true); return }
+    if (score.total >= sessionLength) {
+      setSessionDone(true)
+      const correct = results.filter(r => r.correct).length + (feedback === 'correct' ? 1 : 0)
+      const accuracy = Math.round((correct / sessionLength) * 100)
+      toast.success(`Session complete! ${accuracy}% accuracy 🎉`)
+      return
+    }
     const type = mode === 'auto' ? getWeightedQuizType(weakTypeMap) : mode as QuizType
     const q = buildQuiz(type)
     if (!q) return
@@ -128,7 +128,7 @@ export default function QuizPage() {
       })
     } else {
       setMatchState(null)
-      if (type === 'spelling') setTimeout(() => speak(q.word.word), 300)
+      if (type === 'spelling') setTimeout(() => speakWord(q.word.word), 300)
     }
   }
 
@@ -144,7 +144,7 @@ export default function QuizPage() {
       setMatchState({ wordOrder: shuffleArray(q.pairs.map(p => p.word)), defOrder: shuffleArray(q.pairs.map(p => p.definition)), selected: null, matched: {}, wrong: [] })
     } else {
       setMatchState(null)
-      if (type === 'spelling') setTimeout(() => speak(q.word.word), 300)
+      if (type === 'spelling') setTimeout(() => speakWord(q.word.word), 300)
     }
   }
 
@@ -208,25 +208,15 @@ export default function QuizPage() {
     </div>
   )
 
-  if (words.length < 4) return (
-    <div className="text-center py-20 space-y-4">
-      <Target size={48} className="mx-auto text-[var(--accent)]" />
-      <h2 className="h3 text-[var(--text)]">Not enough words yet</h2>
-      <p className="body text-[var(--text-secondary)]">You need at least 4 words to start quizzing.</p>
-      <a href="/words">
-        <InteractiveButton variant="primary" size="md">
-          Add Words to Quiz
-        </InteractiveButton>
-      </a>
-    </div>
-  )
+  // MCQ and Matching need 4+ words; other types work with 1 word
+  const needsMoreWords = words.length < 1
 
   // SESSION DONE
   if (sessionDone) {
-    const accuracy = Math.round(results.filter(r => r.correct).length / results.length * 100)
+    const accuracy = results.length > 0 ? Math.round(results.filter(r => r.correct).length / results.length * 100) : 0
     const byType: Record<string, { correct: number; total: number }> = {}
     results.forEach(r => { if (!byType[r.type]) byType[r.type] = { correct: 0, total: 0 }; byType[r.type].total++; if (r.correct) byType[r.type].correct++ })
-    const avgTime = Math.round(results.reduce((a, r) => a + r.timeMs, 0) / results.length / 1000)
+    const avgTime = results.length > 0 ? Math.round(results.reduce((a, r) => a + r.timeMs, 0) / results.length / 1000) : 0
 
     return (
       <div className="fade-in max-w-2xl mx-auto space-y-6">
@@ -345,16 +335,26 @@ export default function QuizPage() {
       </SurfaceCard>
 
       {/* Quiz Type Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {needsMoreWords && (
+        <div className="text-center py-8 space-y-4">
+          <Target size={48} className="mx-auto text-[var(--accent)]" />
+          <h2 className="h3 text-[var(--text)]">No words yet</h2>
+          <p className="body text-[var(--text-secondary)]">Add at least one word to start quizzing.</p>
+          <a href="/words"><InteractiveButton variant="primary" size="md">Add Words</InteractiveButton></a>
+        </div>
+      )}
+      {!needsMoreWords && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {Object.entries(QUIZ_META).map(([type, { label, icon, desc, color }]) => {
           const accuracy = weakTypeMap[type as QuizType]
+          const requiresFour = type === 'mcq' || type === 'matching'
+          const disabled = requiresFour && words.length < 4
           return (
             <SurfaceCard
               key={type}
-              hover
+              hover={!disabled}
               elevation="sm"
-              className="cursor-pointer transition-transform"
-              onClick={() => startMode(type as QuizType)}
+              className={disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer transition-transform'}
+              onClick={() => { if (!disabled) startMode(type as QuizType) }}
             >
               <div className="space-y-3">
                 <div>
@@ -362,6 +362,7 @@ export default function QuizPage() {
                   <h3 className="h4 text-[var(--text)]" style={{ color }}>{label}</h3>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">{desc}</p>
+                {disabled && <p className="text-xs font-semibold text-amber-600">⚠ Needs 4+ words</p>}
 
                 {accuracy !== undefined && (
                   <div className="pt-2 border-t border-[var(--border)]">
@@ -383,7 +384,7 @@ export default function QuizPage() {
             </SurfaceCard>
           )
         })}
-      </div>
+      </div>}
     </div>
   )
 
@@ -437,7 +438,7 @@ export default function QuizPage() {
             {quiz.type === 'spelling' && (
               <div className="text-center mb-5">
                 <button
-                  onClick={() => speak(quiz.word.word)}
+                  onClick={() => speakWord(quiz.word.word)}
                   className="w-20 h-20 rounded-full bg-[var(--accent)] text-white border-none cursor-pointer flex items-center justify-center mx-auto mb-2.5 transition-transform hover:scale-105 active:scale-95"
                 >
                   <Volume2 size={30} />
@@ -556,7 +557,12 @@ export default function QuizPage() {
                   placeholder={quiz.type === 'sentence' ? `Write a sentence with "${quiz.word.word}"...` : 'Type your answer...'}
                   value={userAnswer}
                   onChange={e => setUserAnswer(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !feedback && userAnswer.trim()) checkTextAnswer() }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (feedback || matchDone) { nextQuiz(); return }
+                      if (!feedback && userAnswer.trim()) checkTextAnswer()
+                    }
+                  }}
                   disabled={!!feedback}
                 />
                 {quiz.hint && !feedback && (
@@ -573,7 +579,7 @@ export default function QuizPage() {
                 )}
                 {quiz.type === 'spelling' && !feedback && (
                   <button
-                    onClick={() => speak(quiz.word.word)}
+                    onClick={() => speakWord(quiz.word.word)}
                     className="w-full py-2 bg-transparent border border-[var(--border)] rounded-lg cursor-pointer text-[var(--text-secondary)] text-[13px] flex items-center justify-center gap-1.5 hover:bg-[var(--surface-hover)] transition-colors"
                   >
                     <Volume2 size={14} /> Hear again

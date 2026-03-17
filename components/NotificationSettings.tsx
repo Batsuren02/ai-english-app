@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Bell, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
 import {
   loadNotificationConfig,
@@ -92,7 +93,7 @@ export default function NotificationSettings() {
   }
 
   if (loading || !config) {
-    return <div className="text-sm text-[var(--ink-light)]">Loading notification settings...</div>
+    return <div className="text-sm text-[var(--text-secondary)]">Loading notification settings...</div>
   }
 
   if (permission === 'unsupported') {
@@ -101,8 +102,8 @@ export default function NotificationSettings() {
         <div className="flex items-start gap-3">
           <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
           <div>
-            <h3 className="font-semibold text-[var(--ink)]">Notifications not supported</h3>
-            <p className="text-sm text-[var(--ink-light)] mt-1">
+            <h3 className="font-semibold text-[var(--text)]">Notifications not supported</h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
               Your browser doesn't support notifications. Try upgrading to a modern browser like Chrome, Firefox, or Edge.
             </p>
           </div>
@@ -115,7 +116,7 @@ export default function NotificationSettings() {
     <div className="card p-6 space-y-5">
       <div className="flex items-center gap-2 mb-4">
         <Bell size={20} />
-        <h3 className="font-semibold text-[var(--ink)]">Study Reminders</h3>
+        <h3 className="font-semibold text-[var(--text)]">Study Reminders</h3>
       </div>
 
       {/* Permission request */}
@@ -148,62 +149,74 @@ export default function NotificationSettings() {
                 onChange={(e) => handleConfigChange({ enabled: e.target.checked })}
                 className="w-4 h-4"
               />
-              <span className="text-sm font-medium text-[var(--ink)]">Enable daily reminders</span>
+              <span className="text-sm font-medium text-[var(--text)]">Enable daily reminders</span>
             </label>
           </div>
 
           {config.enabled && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[var(--ink)] mb-2">
+                <label className="block text-sm font-medium text-[var(--text)] mb-2">
                   Remind me at
                 </label>
-                <select
-                  value={config.scheduledHour}
-                  onChange={(e) => handleConfigChange({ scheduledHour: parseInt(e.target.value) })}
-                  className="input w-full"
+                <Select
+                  value={String(config.scheduledHour)}
+                  onValueChange={(v) => handleConfigChange({ scheduledHour: parseInt(v) })}
                 >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>
-                      {String(i).padStart(2, '0')}:00 ({i < 12 ? 'AM' : 'PM'})
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {String(i).padStart(2, '0')}:00 {i < 12 ? 'AM' : 'PM'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[var(--ink)] mb-2">
+                  <label className="block text-sm font-medium text-[var(--text)] mb-2">
                     Quiet hours from
                   </label>
-                  <select
-                    value={config.quietHoursStart}
-                    onChange={(e) => handleConfigChange({ quietHoursStart: parseInt(e.target.value) })}
-                    className="input w-full"
+                  <Select
+                    value={String(config.quietHoursStart)}
+                    onValueChange={(v) => handleConfigChange({ quietHoursStart: parseInt(v) })}
                   >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {String(i).padStart(2, '0')}:00
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--ink)] mb-2">
+                  <label className="block text-sm font-medium text-[var(--text)] mb-2">
                     Until
                   </label>
-                  <select
-                    value={config.quietHoursEnd}
-                    onChange={(e) => handleConfigChange({ quietHoursEnd: parseInt(e.target.value) })}
-                    className="input w-full"
+                  <Select
+                    value={String(config.quietHoursEnd)}
+                    onValueChange={(v) => handleConfigChange({ quietHoursEnd: parseInt(v) })}
                   >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {String(i).padStart(2, '0')}:00
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -213,7 +226,7 @@ export default function NotificationSettings() {
                 </Button>
               </div>
 
-              <p className="text-xs text-[var(--ink-light)] italic">
+              <p className="text-xs text-[var(--text-secondary)] italic">
                 💡 Notifications only work while the app is open, or when installed as a PWA.
               </p>
             </>
@@ -222,7 +235,7 @@ export default function NotificationSettings() {
       )}
 
       {dueCount !== null && (
-        <div className="pt-3 border-t border-[var(--border)] text-xs text-[var(--ink-light)]">
+        <div className="pt-3 border-t border-[var(--border)] text-xs text-[var(--text-secondary)]">
           You have <strong>{dueCount}</strong> {dueCount === 1 ? 'word' : 'words'} due right now
         </div>
       )}

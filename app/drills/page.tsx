@@ -1,19 +1,36 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState, useRef } from 'react'
 import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { getWeakWords, calculateDrillStats, generateDrillQuiz, DEFAULT_DRILL_CONFIG, DrillConfig } from '@/lib/drill-generator'
 import { calculateSM2 } from '@/lib/srs'
 import { cn } from '@/lib/utils'
 import { Quiz } from '@/lib/quiz-generator'
-import { AlertCircle, Brain, RotateCw, CheckCircle, XCircle, ChevronRight, Zap } from 'lucide-react'
+import { AlertCircle, Brain, RotateCw, CheckCircle, XCircle, ChevronRight, Zap, Volume2 } from 'lucide-react'
+import { speakWord } from '@/lib/speech-utils'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
 
 type SessionState = 'setup' | 'drilling' | 'complete'
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)])
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+  return dp[m][n]
+}
+
+function isAnswerCorrect(userAnswer: string, correct: string): boolean {
+  const u = userAnswer.trim().toLowerCase()
+  const c = correct.trim().toLowerCase()
+  if (u === c) return true
+  // Allow 1 typo for longer words
+  return c.length > 4 && levenshtein(u, c) <= 1
+}
 
 export default function DrillsPage() {
   const [state, setState] = useState<SessionState>('setup')
@@ -31,6 +48,7 @@ export default function DrillsPage() {
   const [results, setResults] = useState<Array<{ word: string; correct: boolean; beforeEase: number; afterEase: number }>>([])
   const currentIndexRef = useRef(0)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const questionStartRef = useRef(Date.now())
 
   useEffect(() => { loadData() }, [])
 
@@ -76,6 +94,7 @@ export default function DrillsPage() {
     const quiz = generateDrillQuiz(word, words, index, config.sessionLength, config.difficultyProgression)
     if (quiz) {
       setCurrentQuiz(quiz); setUserAnswer(''); setFeedback(null)
+      questionStartRef.current = Date.now()
     } else {
       const nextIdx = index + 1
       currentIndexRef.current = nextIdx; setCurrentIndex(nextIdx)
@@ -85,7 +104,10 @@ export default function DrillsPage() {
 
   async function handleSubmitAnswer() {
     if (!currentQuiz || !userAnswer.trim() || feedback) return
-    const correct = userAnswer.trim().toLowerCase().includes(currentQuiz.answer.toLowerCase())
+    const correct = currentQuiz.type === 'mcq'
+      ? userAnswer.trim().toLowerCase() === currentQuiz.answer.toLowerCase()
+      : isAnswerCorrect(userAnswer, currentQuiz.answer)
+    const responseTimeMs = Date.now() - questionStartRef.current
     setFeedback(correct ? 'correct' : 'wrong')
     const review = reviews.find(r => r.word_id === currentQuiz.word.id)
     const beforeEase = review?.ease_factor ?? 2.5
@@ -102,7 +124,7 @@ export default function DrillsPage() {
     }
     await supabase.from('review_logs').insert({
       word_id: currentQuiz.word.id, quiz_type: currentQuiz.type,
-      result: correct ? 4 : 0, response_time_ms: 0, user_answer: userAnswer, source: 'drill',
+      result: correct ? 4 : 0, response_time_ms: responseTimeMs, user_answer: userAnswer, source: 'drill',
     })
   }
 
@@ -242,10 +264,17 @@ export default function DrillsPage() {
 
           {/* Quiz card */}
           <div className="card" style={{ padding: '24px 22px' }}>
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center justify-between gap-2 mb-4">
               <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
                 {currentQuiz.type.replace('_', ' ')}
               </span>
+              <button
+                onClick={() => speakWord(currentQuiz.word.word)}
+                className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors p-1.5 rounded-lg hover:bg-[var(--accent)]/10"
+                title="Hear pronunciation"
+              >
+                <Volume2 size={14} />
+              </button>
             </div>
 
             <p className="text-[var(--text)] text-[17px] font-semibold leading-relaxed mb-5">{currentQuiz.question}</p>

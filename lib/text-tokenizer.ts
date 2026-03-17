@@ -86,8 +86,10 @@ export function calculateComprehension(tokens: Token[]): {
   knownCount: number
   totalCount: number
 } {
-  const knownCount = tokens.filter((t) => t.isKnown).length
-  const totalCount = tokens.length
+  // Exclude stop words — only count meaningful content words
+  const contentTokens = tokens.filter((t) => !isStopWord(t.word))
+  const knownCount = contentTokens.filter((t) => t.isKnown).length
+  const totalCount = contentTokens.length
 
   return {
     percentage: totalCount > 0 ? Math.round((knownCount / totalCount) * 100) : 0,
