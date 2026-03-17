@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile } from '@/lib/supabase'
-import { Save, Copy, Check, AlertCircle, Eye } from 'lucide-react'
+import { Save, Copy, Check, AlertCircle, Eye, Palette, LayoutList } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
 import NotificationSettings from '@/components/NotificationSettings'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import FormInput from '@/components/design/FormInput'
 import { useToastContext } from '@/components/ToastProvider'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function SettingsPage() {
   const toast = useToastContext()
@@ -22,10 +24,12 @@ export default function SettingsPage() {
   const [singleWord, setSingleWord] = useState('')
   const [batchWords, setBatchWords] = useState('')
   const [showMongolianHint, setShowMongolianHint] = useState(false)
+  const [quizSessionLength, setQuizSessionLength] = useState('10')
 
   useEffect(() => {
     try {
       setShowMongolianHint(localStorage.getItem('showMongolianHint') === 'true')
+      setQuizSessionLength(localStorage.getItem('quiz_session_length') ?? '10')
     } catch {}
   }, [])
 
@@ -109,6 +113,21 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Appearance */}
+      <SurfaceCard padding="lg">
+        <div className="flex items-center gap-2 mb-5">
+          <Palette size={18} className="text-[var(--accent)]" />
+          <h3 className="h3 text-[var(--text)]">Appearance</h3>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="label text-[var(--text)] block">Theme</label>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-1">Choose your preferred color scheme</p>
+          </div>
+          <ThemeSwitcher />
+        </div>
+      </SurfaceCard>
+
       {/* Profile Settings */}
       <SurfaceCard padding="lg">
         <h3 className="h3 text-[var(--text)] mb-5">Learning Profile</h3>
@@ -152,6 +171,30 @@ export default function SettingsPage() {
               onChange={e => setProfile(p => ({ ...p, daily_target_minutes: parseInt(e.target.value) }))}
             />
             <p className="text-[11px] text-[var(--text-secondary)] mt-1.5">Ideal daily practice time</p>
+          </div>
+
+          <div>
+            <label className="label text-[var(--text)] block mb-2">
+              <LayoutList size={14} className="inline mr-1.5 mb-0.5" />Quiz Session Length
+            </label>
+            <Select
+              value={quizSessionLength}
+              onValueChange={(v) => {
+                setQuizSessionLength(v)
+                try { localStorage.setItem('quiz_session_length', v) } catch {}
+                toast.info(`Quiz length set to ${v} questions`)
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[5, 10, 15, 20].map(n => (
+                  <SelectItem key={n} value={String(n)}>{n} questions per session</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-1.5">Number of questions in each quiz session</p>
           </div>
 
           {/* Mongolian Hint Toggle */}

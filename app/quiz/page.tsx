@@ -43,7 +43,9 @@ export default function QuizPage() {
   const [score, setScore] = useState({ correct: 0, total: 0 })
   const [results, setResults] = useState<SessionResult[]>([])
   const [sessionDone, setSessionDone] = useState(false)
-  const [sessionLength] = useState(10)
+  const [sessionLength] = useState(() => {
+    try { return parseInt(localStorage.getItem('quiz_session_length') ?? '10') } catch { return 10 }
+  })
   const [loading, setLoading] = useState(true)
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [matchDone, setMatchDone] = useState(false)

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, BookOpen } from 'lucide-react'
+import { format, addDays, startOfDay, formatDistanceToNow } from 'date-fns'
+import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, BookOpen, Clock, CalendarDays } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -21,20 +22,40 @@ export default function StatsPage() {
   const [avgAccuracy, setAvgAccuracy] = useState(0)
   const [totalWords, setTotalWords] = useState(0)
   const [profile, setProfile] = useState<any>(null)
+  const [forecastData, setForecastData] = useState<{ day: string; count: number }[]>([])
+  const [avgStudyMinutes, setAvgStudyMinutes] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { loadStats() }, [])
 
   async function loadStats() {
-    const [logsRes, wordsRes, reviewsRes, profileRes] = await Promise.all([
+    const todayStart = startOfDay(new Date())
+    const next7 = addDays(todayStart, 7)
+
+    const [logsRes, wordsRes, reviewsRes, profileRes, forecastRes] = await Promise.all([
       supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()),
       supabase.from('words').select('id, cefr_level, category'),
       supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor', { ascending: true }).limit(10),
       supabase.from('user_profile').select('*').single(),
+      supabase.from('reviews').select('next_review').gte('next_review', todayStart.toISOString().split('T')[0]).lte('next_review', next7.toISOString().split('T')[0]),
     ])
 
     if (profileRes.data) setProfile(profileRes.data)
     if (wordsRes.count !== undefined) setTotalWords(wordsRes.data?.length || 0)
+
+    // Build 7-day review forecast
+    if (forecastRes.data) {
+      const forecast = Array.from({ length: 7 }, (_, i) => {
+        const day = addDays(todayStart, i)
+        const dayStr = day.toISOString().split('T')[0]
+        const count = forecastRes.data!.filter((r: any) => {
+          const reviewDay = typeof r.next_review === 'string' ? r.next_review.split('T')[0] : r.next_review
+          return reviewDay === dayStr
+        }).length
+        return { day: i === 0 ? 'Today' : format(day, 'EEE'), count }
+      })
+      setForecastData(forecast)
+    }
 
     if (logsRes.data) {
       const logs = logsRes.data
@@ -58,6 +79,18 @@ export default function StatsPage() {
       const cal: Record<string, number> = {}
       logs.forEach((l: any) => { const d = l.created_at.split('T')[0]; cal[d] = (cal[d] || 0) + 1 })
       setCalendarData(cal)
+
+      // Avg daily study time from response_time_ms
+      const dayTotals = new Map<string, number>()
+      logs.forEach((l: any) => {
+        if (l.response_time_ms > 0) {
+          const day = l.created_at.split('T')[0]
+          dayTotals.set(day, (dayTotals.get(day) ?? 0) + l.response_time_ms)
+        }
+      })
+      const activeDays = dayTotals.size
+      const totalMs = [...dayTotals.values()].reduce((a, b) => a + b, 0)
+      setAvgStudyMinutes(activeDays > 0 ? Math.max(1, Math.round(totalMs / activeDays / 1000 / 60)) : 0)
 
       // Quiz type accuracy
       const types: Record<string, { total: number; correct: number }> = {}
@@ -184,7 +217,7 @@ export default function StatsPage() {
       </div>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         <StatCard
           icon={<BookMarked size={28} className="text-blue-500" />}
           label="Total Words"
@@ -214,6 +247,12 @@ export default function StatsPage() {
           color="#dc2626"
           trend={profile?.current_streak ? { direction: 'up', percent: profile.current_streak } : undefined}
         />
+        <StatCard
+          icon={<Clock size={28} className="text-sky-500" />}
+          label="Avg Study Time"
+          value={avgStudyMinutes > 0 ? `${avgStudyMinutes} min/day` : '—'}
+          color="var(--accent)"
+        />
       </div>
 
       {/* Streak Calendar */}
@@ -238,6 +277,25 @@ export default function StatsPage() {
           </BarChart>
         </ResponsiveContainer>
       </SurfaceCard>
+
+      {/* Upcoming Reviews Forecast */}
+      {forecastData.length > 0 && (
+        <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
+          <div className="flex items-center gap-2 mb-6">
+            <CalendarDays size={18} className="text-[var(--accent)]" />
+            <h3 className="h4 text-[var(--text)]">Upcoming Reviews (Next 7 Days)</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={forecastData}>
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} allowDecimals={false} />
+              <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} formatter={(v) => [v, 'Due']} />
+              <Bar dataKey="count" fill="var(--accent)" radius={[6, 6, 0, 0]} name="Due" />
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-xs text-[var(--text-secondary)] mt-3 italic">Plan your study schedule based on upcoming reviews</p>
+        </SurfaceCard>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Accuracy by quiz type */}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase, Word, Review } from '@/lib/supabase'
+import Papa from 'papaparse'
 import { Plus, Search, Download, X, Volume2, Copy, Check, Trash2, Star, Eye, ArrowDownAZ, SortAsc } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
 import { speakWord } from '@/lib/speech-utils'
@@ -34,11 +35,16 @@ interface WordWithReview extends Word {
   progressPercent?: number
 }
 
+const PAGE_SIZE = 30
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WordsPage() {
   const toast = useToastContext()
   const [words, setWords] = useState<WordWithReview[]>([])
   const [filtered, setFiltered] = useState<WordWithReview[]>([])
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('all')
   const [filterLevel, setFilterLevel] = useState('all')
@@ -101,39 +107,59 @@ export default function WordsPage() {
     setFiltered(f)
   }, [words, search, filterCat, filterLevel, filterMastery, sortBy])
 
+  function enrichWords(wordsData: Word[], reviewsData: Review[]): WordWithReview[] {
+    const reviewMap = new Map(reviewsData.map((r: Review) => [r.word_id, r]))
+    return wordsData.map((word) => {
+      const review = reviewMap.get(word.id)
+      const reps = review?.repetitions || 0
+      let masteryLevel: 'mastered' | 'learning' | 'needs_review'
+      let progressPercent = 0
+      if (reps === 0) { masteryLevel = 'needs_review'; progressPercent = 0 }
+      else if (reps < 3) { masteryLevel = 'learning'; progressPercent = (reps / 3) * 100 }
+      else { masteryLevel = 'mastered'; progressPercent = 100 }
+      return { ...word, review, masteryLevel, progressPercent }
+    })
+  }
+
   async function loadWords() {
     try {
-      const { data: wordsData } = await supabase.from('words').select('*').order('created_at', { ascending: false })
+      const { data: wordsData } = await supabase.from('words').select('*').order('created_at', { ascending: false }).range(0, PAGE_SIZE - 1)
       const { data: reviewsData } = await supabase.from('reviews').select('*')
 
       if (wordsData && reviewsData) {
-        const reviewMap = new Map(reviewsData.map((r: Review) => [r.word_id, r]))
-        const enriched: WordWithReview[] = wordsData.map((word) => {
-          const review = reviewMap.get(word.id)
-          const reps = review?.repetitions || 0
-
-          let masteryLevel: 'mastered' | 'learning' | 'needs_review'
-          let progressPercent = 0
-          if (reps === 0) {
-            masteryLevel = 'needs_review'
-            progressPercent = 0
-          } else if (reps < 3) {
-            masteryLevel = 'learning'
-            progressPercent = (reps / 3) * 100
-          } else {
-            masteryLevel = 'mastered'
-            progressPercent = 100
-          }
-
-          return { ...word, review, masteryLevel, progressPercent }
-        })
+        const enriched = enrichWords(wordsData, reviewsData)
         setWords(enriched)
         setFiltered(enriched)
+        setOffset(0)
+        setHasMore(wordsData.length === PAGE_SIZE)
       }
     } catch (error) {
       console.error('Failed to load words:', error)
+      toast.error('Failed to load words')
     }
     setLoading(false)
+  }
+
+  async function loadMoreWords() {
+    setLoadingMore(true)
+    try {
+      const newOffset = offset + PAGE_SIZE
+      const { data: wordsData } = await supabase.from('words').select('*').order('created_at', { ascending: false }).range(newOffset, newOffset + PAGE_SIZE - 1)
+      if (wordsData && wordsData.length > 0) {
+        const wordIds = wordsData.map((w: Word) => w.id)
+        const { data: reviewsData } = await supabase.from('reviews').select('*').in('word_id', wordIds)
+        const enriched = enrichWords(wordsData, reviewsData || [])
+        setWords(prev => [...prev, ...enriched])
+        setOffset(newOffset)
+        setHasMore(wordsData.length === PAGE_SIZE)
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('Failed to load more words:', error)
+      toast.error('Failed to load more words')
+    }
+    setLoadingMore(false)
   }
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
@@ -252,10 +278,29 @@ export default function WordsPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  function exportJSON() {
-    const blob = new Blob([JSON.stringify(words, null, 2)], { type: 'application/json' })
+  function exportToCSV() {
+    const rows = words.map(w => ({
+      word: w.word,
+      definition: w.definition,
+      mongolian: w.mongolian,
+      part_of_speech: w.part_of_speech,
+      ipa: w.ipa,
+      cefr_level: w.cefr_level,
+      category: w.category,
+      goal_tag: w.goal_tag,
+      notes: w.notes,
+      examples: (w.examples as string[])?.join(' | ') ?? '',
+      word_family: (w.word_family as string[])?.join(', ') ?? '',
+    }))
+    const csv = Papa.unparse(rows)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    Object.assign(document.createElement('a'), { href: url, download: 'words.json' }).click()
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `vocabulary-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${words.length} words`)
   }
 
 
@@ -336,11 +381,11 @@ export default function WordsPage() {
           <InteractiveButton
             variant="secondary"
             size="md"
-            onClick={exportJSON}
+            onClick={exportToCSV}
             className="flex items-center gap-2"
           >
             <Download size={16} />
-            Export
+            Export CSV
           </InteractiveButton>
           <InteractiveButton
             variant="primary"
@@ -547,6 +592,21 @@ export default function WordsPage() {
               </div>
             </div>
           ))}
+
+          {/* Load More */}
+          {hasMore && (
+            <div className="col-span-full flex justify-center pt-2 pb-2">
+              <InteractiveButton
+                variant="secondary"
+                size="md"
+                onClick={loadMoreWords}
+                isLoading={loadingMore}
+                className="min-w-[160px]"
+              >
+                Load More Words
+              </InteractiveButton>
+            </div>
+          )}
         </div>
       )}
 

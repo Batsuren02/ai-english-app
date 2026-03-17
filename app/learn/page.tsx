@@ -5,7 +5,8 @@ import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
 import { speakWord } from '@/lib/speech-utils'
 import { interleaveWords, parseInterleaveConfig } from '@/lib/interleaving'
-import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { formatDistanceToNow, format } from 'date-fns'
+import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame, ThumbsUp, ThumbsDown, Calendar } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -29,6 +30,7 @@ export default function LearnPage() {
   const [loading, setLoading] = useState(true)
   const [newCount, setNewCount] = useState(0)
   const [dueCount, setDueCount] = useState(0)
+  const [nextReviewDate, setNextReviewDate] = useState<string | null>(null)
 
   // Real-time drag state
   const [dragX, setDragX] = useState(0)
@@ -52,6 +54,28 @@ export default function LearnPage() {
     loadDueWords()
     try { setShowMongolianHint(localStorage.getItem('showMongolianHint') === 'true') } catch {}
   }, [])
+
+  // Keyboard shortcuts: Space/Enter to flip, 1-4 to rate
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (!dueWords[currentIdx] || sessionDone) return
+
+      if (!showDetails) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault()
+          setShowDetails(true)
+        }
+      } else {
+        if (e.key === '1') { e.preventDefault(); rateWithQuality(0) }
+        if (e.key === '2') { e.preventDefault(); rateWithQuality(2) }
+        if (e.key === '3') { e.preventDefault(); rateWithQuality(3) }
+        if (e.key === '4') { e.preventDefault(); rateWithQuality(5) }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [dueWords, currentIdx, showDetails, sessionDone])
 
   async function loadDueWords() {
     const today = new Date().toISOString().split('T')[0]
@@ -88,6 +112,19 @@ export default function LearnPage() {
     const interleaved: WordWithReview[] = interleaveWords(dueItems, newWordsFull, interleaveConfig)
 
     setDueWords(interleaved)
+
+    // If nothing is due, find the next upcoming review date
+    if (interleaved.length === 0) {
+      const { data: upcoming } = await supabase
+        .from('reviews')
+        .select('next_review')
+        .gt('next_review', new Date().toISOString().split('T')[0])
+        .order('next_review', { ascending: true })
+        .limit(1)
+        .single()
+      if (upcoming?.next_review) setNextReviewDate(upcoming.next_review)
+    }
+
     setLoading(false)
     startTimeRef.current = Date.now()
     } catch (err) {
@@ -307,7 +344,11 @@ export default function LearnPage() {
     <EmptyState
       icon={<CheckCircle size={56} className="text-green-600" />}
       title="All caught up! 🎉"
-      description="No words due for review today. You're doing great! Come back tomorrow."
+      description={
+        nextReviewDate
+          ? `Your next review is in ${formatDistanceToNow(new Date(nextReviewDate))} — ${format(new Date(nextReviewDate), 'EEEE, MMM d')}`
+          : "No words due for review today. You're doing great! Come back tomorrow."
+      }
       animated={false}
     />
   )
@@ -593,6 +634,9 @@ export default function LearnPage() {
                 <p className="label text-[var(--text-secondary)] text-center text-sm cursor-pointer hover:text-[var(--accent)] transition-colors">
                   Tap card to flip
                 </p>
+                <p className="hidden md:block text-xs text-center text-[var(--text-secondary)] opacity-40 mt-1">
+                  Space to flip
+                </p>
               </div>
             </SurfaceCard>
           </div>
@@ -664,6 +708,9 @@ export default function LearnPage() {
 
               <p className="label text-[var(--text-secondary)] text-center text-xs mt-3 cursor-pointer hover:text-[var(--accent)] transition-colors">
                 Tap card to flip back
+              </p>
+              <p className="hidden md:block text-xs text-center text-[var(--text-secondary)] opacity-50 mt-1">
+                1 Again · 2 Hard · 3 Good · 4 Easy
               </p>
             </SurfaceCard>
           </div>

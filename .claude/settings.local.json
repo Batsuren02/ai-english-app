@@ -65,7 +65,8 @@
       "Bash(Write-Host \"done\")",
       "Bash(npx shadcn@latest add alert-dialog --yes)",
       "Bash(npm ls:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(xargs wc:*)"
     ]
   }
 }
