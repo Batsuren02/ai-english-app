@@ -115,7 +115,7 @@ export default function LearnPage() {
     setDueCount(dueItems.length)
     setNewCount(newWordsFull.length)
 
-    const { data: profile } = await supabase.from('user_profile').select('*').single()
+    const { data: profile } = await supabase.from('user_profile').select('*').limit(1).maybeSingle()
     const interleaveConfig = parseInterleaveConfig(profile)
     const interleaved: WordWithReview[] = interleaveWords(dueItems, newWordsFull, interleaveConfig)
 

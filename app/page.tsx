@@ -29,7 +29,7 @@ export default function Dashboard() {
     try {
       const today = new Date().toISOString().split('T')[0]
       const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
-        supabase.from('user_profile').select('*').single(),
+        supabase.from('user_profile').select('*').limit(1).maybeSingle(),
         supabase.from('words').select('id', { count: 'exact', head: true }),
         supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
         supabase.from('reviews').select('word_id, ease_factor, words(id, word, definition)').order('ease_factor', { ascending: true }).limit(5),
@@ -83,19 +83,58 @@ export default function Dashboard() {
 
   if (loading) return (
     <div className="space-y-6 fade-in">
-      <div className="pb-1 space-y-2">
-        <div className="h-8 w-48 shimmer bg-[var(--border)] rounded-lg" />
-        <div className="h-4 w-64 shimmer bg-[var(--border)] rounded" />
-      </div>
+      {/* Hero section skeleton */}
+      <div className="rounded-2xl shimmer" style={{ height: 100, background: 'var(--border)' }} />
+
+      {/* Bento stats grid skeleton */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="col-span-2 rounded-2xl border border-[var(--border)] p-5 shimmer bg-[var(--border)]" style={{ minHeight: 120 }} />
-        <div className="rounded-2xl border border-[var(--border)] p-5 shimmer bg-[var(--border)]" style={{ minHeight: 120 }} />
-        <div className="rounded-2xl border border-[var(--border)] p-5 shimmer bg-[var(--border)]" style={{ minHeight: 120 }} />
+        {/* Due Today — wide */}
+        <div className="col-span-2 rounded-2xl shimmer flex flex-col justify-between p-5" style={{ minHeight: 120, background: 'var(--border)' }}>
+          <div className="h-3 w-20 rounded shimmer" style={{ background: 'color-mix(in srgb, var(--border) 80%, var(--surface))' }} />
+          <div className="h-10 w-16 rounded-lg shimmer" style={{ background: 'color-mix(in srgb, var(--border) 80%, var(--surface))' }} />
+        </div>
+        {/* Words */}
+        <div className="rounded-2xl shimmer flex flex-col justify-between p-5" style={{ minHeight: 120, background: 'var(--border)' }}>
+          <div className="h-3 w-14 rounded" style={{ background: 'color-mix(in srgb, var(--border) 80%, var(--surface))' }} />
+          <div className="h-9 w-12 rounded-lg" style={{ background: 'color-mix(in srgb, var(--border) 80%, var(--surface))' }} />
+        </div>
+        {/* Streak */}
+        <div className="rounded-2xl shimmer flex flex-col justify-between p-5" style={{ minHeight: 120, background: 'var(--border)' }}>
+          <div className="h-3 w-14 rounded" style={{ background: 'color-mix(in srgb, var(--border) 80%, var(--surface))' }} />
+          <div className="h-9 w-12 rounded-lg" style={{ background: 'color-mix(in srgb, var(--border) 80%, var(--surface))' }} />
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <SkeletonStat />
-        <SkeletonStat />
-        <SkeletonStat />
+
+      {/* Practice cards skeleton */}
+      <div className="space-y-2">
+        <div className="h-3 w-16 rounded shimmer" style={{ background: 'var(--border)' }} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 flex items-center gap-3 border-l-4" style={{ borderLeftColor: 'var(--border)' }}>
+              <div className="w-8 h-8 rounded-lg shimmer" style={{ background: 'var(--border)', flexShrink: 0 }} />
+              <div className="space-y-1.5 flex-1">
+                <div className="h-3 w-14 rounded shimmer" style={{ background: 'var(--border)' }} />
+                <div className="h-2.5 w-20 rounded shimmer" style={{ background: 'var(--border)' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Activity chart skeleton */}
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="h-3.5 w-24 rounded shimmer" style={{ background: 'var(--border)' }} />
+          <div className="h-3 w-20 rounded shimmer" style={{ background: 'var(--border)' }} />
+        </div>
+        <div className="flex items-end gap-2 h-16">
+          {[40,65,30,80,55,70,45].map((h, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+              <div className="w-full rounded-sm shimmer" style={{ height: `${h}%`, background: 'var(--border)' }} />
+              <div className="h-2 w-6 rounded shimmer" style={{ background: 'var(--border)' }} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

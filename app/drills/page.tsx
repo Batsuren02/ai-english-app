@@ -57,7 +57,7 @@ export default function DrillsPage() {
       const [wordsRes, reviewsRes, profileRes] = await Promise.all([
         supabase.from('words').select('*'),
         supabase.from('reviews').select('*'),
-        supabase.from('user_profile').select('*').single(),
+        supabase.from('user_profile').select('*').limit(1).maybeSingle(),
       ])
       if (wordsRes.data) setWords(wordsRes.data)
       if (reviewsRes.data) setReviews(reviewsRes.data)

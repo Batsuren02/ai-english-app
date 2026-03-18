@@ -33,17 +33,40 @@ export function SkeletonStat({ className }: { className?: string }) {
 /** A skeleton shaped like a word card in the grid */
 export function SkeletonWordCard({ className }: { className?: string }) {
   return (
-    <div className={cn('card p-4 rounded-xl border border-[var(--border)] space-y-3', className)}>
-      <div className="flex justify-between items-start">
-        <Skeleton width="100px" height="16px" rounded="sm" />
+    <div className={cn(
+      'relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 border-l-4 space-y-4 overflow-hidden',
+      className
+    )}
+      style={{ borderLeftColor: 'var(--border)' }}
+    >
+      {/* Top: word title + sound icon */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2 flex-1">
+          <Skeleton width="120px" height="22px" rounded="md" />
+          <Skeleton width="80px" height="11px" rounded="sm" />
+        </div>
+        <Skeleton width="30px" height="30px" rounded="md" />
+      </div>
+
+      {/* Definition lines */}
+      <div className="space-y-2">
+        <Skeleton width="100%" height="13px" rounded="sm" />
+        <Skeleton width="75%" height="13px" rounded="sm" />
+      </div>
+
+      {/* Badges row */}
+      <div className="flex gap-2 pt-1">
+        <Skeleton width="72px" height="20px" rounded="full" />
+        <Skeleton width="32px" height="20px" rounded="full" />
         <Skeleton width="56px" height="20px" rounded="full" />
       </div>
-      <Skeleton width="140px" height="12px" rounded="sm" />
-      <Skeleton width="100%" height="10px" rounded="sm" />
-      <Skeleton width="80%" height="10px" rounded="sm" />
-      <div className="flex justify-between pt-1">
-        <Skeleton width="60px" height="8px" rounded="sm" />
-        <Skeleton width="40px" height="8px" rounded="sm" />
+
+      {/* Progress bar */}
+      <div className="flex items-center gap-2 pt-1">
+        <div className="flex-1 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+          <div className="h-full w-1/3 shimmer bg-[var(--border)] rounded-full" />
+        </div>
+        <Skeleton width="28px" height="11px" rounded="sm" />
       </div>
     </div>
   )

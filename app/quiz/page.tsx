@@ -73,7 +73,7 @@ export default function QuizPage() {
         supabase.from('words').select('*'),
         supabase.from('reviews').select('word_id, ease_factor'),
         supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-        supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').single(),
+        supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').limit(1).maybeSingle(),
       ])
       if (wordsRes.data) setWords(wordsRes.data)
       if (reviewsRes.data) {

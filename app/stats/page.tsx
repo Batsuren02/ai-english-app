@@ -38,7 +38,7 @@ export default function StatsPage() {
       supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()),
       supabase.from('words').select('id, cefr_level, category'),
       supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor', { ascending: true }).limit(10),
-      supabase.from('user_profile').select('*').single(),
+      supabase.from('user_profile').select('*').limit(1).maybeSingle(),
       supabase.from('reviews').select('next_review').gte('next_review', todayStart.toISOString().split('T')[0]).lte('next_review', next7.toISOString().split('T')[0]),
     ])
 

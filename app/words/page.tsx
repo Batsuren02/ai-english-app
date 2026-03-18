@@ -321,16 +321,12 @@ export default function WordsPage() {
 
 
   // ── Helper functions ──────────────────────────────────────────────────────
-  function getMasteryColor(level?: string): string {
+  function getMasteryAccent(level?: string): string {
     switch (level) {
-      case 'mastered':
-        return 'from-emerald-500/20 to-emerald-600/10 border-emerald-400/30'
-      case 'learning':
-        return 'from-blue-500/20 to-blue-600/10 border-blue-400/30'
-      case 'needs_review':
-        return 'from-amber-500/20 to-amber-600/10 border-amber-400/30'
-      default:
-        return 'from-slate-500/10 to-slate-600/5 border-slate-400/20'
+      case 'mastered':    return '#10b981'
+      case 'learning':    return '#3b82f6'
+      case 'needs_review': return '#f59e0b'
+      default:            return 'var(--border)'
     }
   }
 
@@ -430,7 +426,7 @@ export default function WordsPage() {
       </div>
 
       {/* ── Sticky Search + Filters ──────────────────────────────────────────── */}
-      <div className="sticky top-[40px] z-10 bg-[var(--bg)] py-2 space-y-3">
+      <div className="sticky top-[40px] md:top-0 z-10 bg-[var(--bg)] py-2 space-y-3">
         {/* Search bar */}
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
@@ -543,11 +539,10 @@ export default function WordsPage() {
             <div
               key={w.id}
               className={cn(
-                'group relative rounded-xl border-2 p-5 cursor-pointer transition-all duration-300',
-                'bg-gradient-to-br',
-                getMasteryColor(w.masteryLevel),
-                !showDetails && 'hover:shadow-lg hover:scale-105'
+                'group relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 cursor-pointer transition-all duration-200 border-l-4',
+                !showDetails && 'hover:shadow-md hover:-translate-y-0.5'
               )}
+              style={{ borderLeftColor: getMasteryAccent(w.masteryLevel) }}
               onClick={() => {
                 setSelectedWord(w)
                 setShowDetails(true)
@@ -618,8 +613,8 @@ export default function WordsPage() {
 
               {/* Review count indicator */}
               {w.review && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 text-xs bg-[var(--bg-card)] px-2 py-1 rounded-lg text-[var(--text-secondary)]">
-                  <Eye size={12} />
+                <div className="absolute top-3 right-3 flex items-center gap-1 text-xs bg-[var(--bg)] border border-[var(--border)] px-2 py-1 rounded-lg text-[var(--text-secondary)]">
+                  <Eye size={11} />
                   {w.review.repetitions}
                 </div>
               )}

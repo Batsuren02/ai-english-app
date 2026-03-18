@@ -34,7 +34,7 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    supabase.from('user_profile').select('*').single().then(({ data }) => {
+    supabase.from('user_profile').select('*').limit(1).maybeSingle().then(({ data }) => {
       if (data) setProfile(data)
     })
   }, [])

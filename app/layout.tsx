@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/lib/theme-context'
 import SidebarNav from '@/components/navigation/SidebarNav'
 import BottomTabBar from '@/components/navigation/BottomTabBar'
+import NavigationProgress from '@/components/navigation/NavigationProgress'
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -50,6 +51,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
       </div>
 
+      {/* Route change progress bar */}
+      <NavigationProgress />
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
     </ToastProvider>
@@ -66,8 +69,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="description" content="Spaced repetition vocabulary app for English learners" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        {/* Anti-flash: apply theme bg before React hydrates to prevent white flash */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme')||'light';var m={'light':'#f4f0e6','dark':'#111009','palenight':'#151b35','vampire':'#0d0917','oceanic':'#0a2535','catppuccin':'#1e1e2e','rosepine':'#191724'};var bg=m[t]||m.light;document.documentElement.style.setProperty('--bg',bg);document.documentElement.style.background=bg;}catch(e){}})()`}} />
+        {/* Anti-flash: apply ALL core theme vars before React hydrates to prevent color-mismatch flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{
+var t=localStorage.getItem('theme')||'light';
+var themes={
+  light:  {bg:'#f2f0ea',surface:'#ffffff',border:'#e2ddd5',text:'#1c1917',textSec:'#78716c'},
+  dark:   {bg:'#111009',surface:'#1c1a15',border:'#2e2b23',text:'#f5f0e8',textSec:'#a09880'},
+  palenight:{bg:'#151b35',surface:'#1e2547',border:'#2d3561',text:'#c8d3f5',textSec:'#7982b4'},
+  vampire:{bg:'#0d0917',surface:'#1a0f2e',border:'#2d1b4e',text:'#e2d9f3',textSec:'#9580aa'},
+  oceanic:{bg:'#0a2535',surface:'#0d2f40',border:'#1a4358',text:'#cdd3de',textSec:'#7a9ab0'},
+  catppuccin:{bg:'#1e1e2e',surface:'#313244',border:'#45475a',text:'#cdd6f4',textSec:'#a6adc8'},
+  rosepine:{bg:'#191724',surface:'#1f1d2e',border:'#2a2838',text:'#e0def4',textSec:'#908caa'}
+};
+var v=themes[t]||themes.light;
+var r=document.documentElement;
+r.style.setProperty('--bg',v.bg);
+r.style.setProperty('--surface',v.surface);
+r.style.setProperty('--border',v.border);
+r.style.setProperty('--text',v.text);
+r.style.setProperty('--text-secondary',v.textSec);
+r.style.background=v.bg;
+}catch(e){}})()`}} />
       </head>
       <body>
         <ThemeProvider>
