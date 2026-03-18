@@ -97,21 +97,21 @@ const themes: Record<ThemeName, Theme> = {
     colors: {
       bg: '#151b35',
       bgSecondary: '#1b2245',
-      surface: '#1e2849',
-      surfaceHover: '#253260',
+      surface: '#202c56',        // was #1e2849 — more visible separation from bg
+      surfaceHover: '#2a3868',   // was #253260
       text: '#cdd6f4',
-      textSecondary: '#8892b0',
-      accent: '#8d9ef7',
+      textSecondary: '#a0afd4',  // was #8892b0 — brighter, easier to read
+      accent: '#7c91ff',         // was #8d9ef7 — more vibrant pop on navy bg
       accentSecondary: '#74c7ec',
       accentLight: '#1c2145',
-      border: '#364070',
-      borderLight: '#445083',
+      border: '#3e4d84',         // was #364070 — more visible
+      borderLight: '#4f609a',    // was #445083
       success: '#a6da95',
       error: '#ed8796',
       warning: '#eed49f',
       shadow: 'rgba(0, 0, 20, 0.6)',
-      surfaceGlass: 'rgba(30, 40, 73, 0.82)',
-      surfaceElevated: '#253260',
+      surfaceGlass: 'rgba(32, 44, 86, 0.82)',
+      surfaceElevated: '#2a3868',
     },
   },
 
@@ -121,21 +121,21 @@ const themes: Record<ThemeName, Theme> = {
     colors: {
       bg: '#0d0917',
       bgSecondary: '#140d22',
-      surface: '#1a1130',
-      surfaceHover: '#221443',
+      surface: '#1e1438',        // was #1a1130 — more separation from bg
+      surfaceHover: '#271848',   // was #221443
       text: '#e8e0ff',
-      textSecondary: '#a892c8',
-      accent: '#ff3d71',
+      textSecondary: '#c4aee0',  // was #a892c8 — brighter, clearly secondary
+      accent: '#f472b6',         // was #ff3d71 — FIXED: pink, not red (≠ error)
       accentSecondary: '#a855f7',
       accentLight: '#1a0a2e',
-      border: '#312050',
-      borderLight: '#3e2a65',
+      border: '#3d2860',         // was #312050 — more visible
+      borderLight: '#4e3678',    // was #3e2a65
       success: '#5bead4',
-      error: '#ff3d71',
+      error: '#ff5370',          // was #ff3d71 — now distinct from accent
       warning: '#fcd34d',
       shadow: 'rgba(0, 0, 10, 0.7)',
-      surfaceGlass: 'rgba(26, 17, 48, 0.85)',
-      surfaceElevated: '#221443',
+      surfaceGlass: 'rgba(30, 20, 56, 0.85)',
+      surfaceElevated: '#271848',
     },
   },
 
@@ -145,21 +145,21 @@ const themes: Record<ThemeName, Theme> = {
     colors: {
       bg: '#0a2535',
       bgSecondary: '#0f3347',
-      surface: '#14405a',
-      surfaceHover: '#1a5070',
+      surface: '#164a6a',        // was #14405a — more separation from bg
+      surfaceHover: '#1d5c80',   // was #1a5070
       text: '#c8e8f0',
-      textSecondary: '#6ea8b8',
-      accent: '#00c4e8',
+      textSecondary: '#93c5d4',  // was #6ea8b8 — lighter, distinct from accent hue
+      accent: '#22d3ee',         // was #00c4e8 — brighter, higher contrast
       accentSecondary: '#ff8c69',
       accentLight: '#082030',
-      border: '#1e546a',
-      borderLight: '#2a6a82',
+      border: '#245f78',         // was #1e546a — more visible
+      borderLight: '#2e7690',    // was #2a6a82
       success: '#5eead4',
       error: '#fb7185',
       warning: '#fbbf24',
       shadow: 'rgba(0, 20, 35, 0.6)',
-      surfaceGlass: 'rgba(20, 64, 90, 0.82)',
-      surfaceElevated: '#1a5070',
+      surfaceGlass: 'rgba(22, 74, 106, 0.82)',
+      surfaceElevated: '#1d5c80',
     },
   },
 
@@ -176,7 +176,7 @@ const themes: Record<ThemeName, Theme> = {
       accent: '#cba6f7',
       accentSecondary: '#89b4fa',
       accentLight: '#2a2240',
-      border: '#45475a',
+      border: '#4a4c62',         // was #45475a — was identical to surfaceHover
       borderLight: '#585b70',
       success: '#a6e3a1',
       error: '#f38ba8',
@@ -192,17 +192,17 @@ const themes: Record<ThemeName, Theme> = {
     displayName: 'Rosé Pine',
     colors: {
       bg: '#191724',
-      bgSecondary: '#12101e',
+      bgSecondary: '#1f1d2e',    // was #12101e — FIXED: was darker than bg!
       surface: '#26233a',
       surfaceHover: '#403d52',
       text: '#e0def4',
-      textSecondary: '#908caa',
+      textSecondary: '#b0abc6',  // was #908caa — brighter, more readable
       accent: '#ebbcba',
       accentSecondary: '#9ccfd8',
       accentLight: '#2d1f2d',
-      border: '#403d52',
+      border: '#4a475e',         // was #403d52 — slightly more visible
       borderLight: '#524f67',
-      success: '#31748f',
+      success: '#56c99b',        // was #31748f — now clearly green
       error: '#eb6f92',
       warning: '#f6c177',
       shadow: 'rgba(0, 0, 0, 0.5)',
