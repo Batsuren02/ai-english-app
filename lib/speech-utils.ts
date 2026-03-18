@@ -206,11 +206,50 @@ export async function blobToDataURL(blob: Blob): Promise<string> {
   })
 }
 
+/** Detect whether a voice is a high-quality neural/premium voice. */
+export function getVoiceQuality(voice: SpeechSynthesisVoice): 'neural' | 'standard' {
+  const n = voice.name.toLowerCase()
+  if (
+    n.includes('google') || n.includes('microsoft') ||
+    n.includes('neural') || n.includes('premium') ||
+    n.includes('enhanced') || n.includes('natural')
+  ) return 'neural'
+  return 'standard'
+}
+
+/**
+ * Return all English voices sorted by quality:
+ * neural voices first, then standard, alphabetically within each tier.
+ */
+export function getEnglishVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return []
+  return window.speechSynthesis
+    .getVoices()
+    .filter(v => v.lang.startsWith('en'))
+    .sort((a, b) => {
+      const qa = getVoiceQuality(a) === 'neural' ? 0 : 1
+      const qb = getVoiceQuality(b) === 'neural' ? 0 : 1
+      if (qa !== qb) return qa - qb
+      return a.name.localeCompare(b.name)
+    })
+}
+
+/** Read the user's saved voice name from localStorage. */
+export function getPreferredVoiceName(): string | null {
+  try { return localStorage.getItem('preferred_voice_name') } catch { return null }
+}
+
+/** Read the user's saved speech rate (default 0.85). */
+export function getSpeechRate(): number {
+  try { return parseFloat(localStorage.getItem('speech_rate') ?? '0.85') } catch { return 0.85 }
+}
+
 /**
  * Use browser TTS to speak a word.
+ * Automatically uses the user's preferred voice + rate from localStorage.
  */
 export function speakWord(word: string, language: string = 'en-US'): void {
-  if (!window.speechSynthesis) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
     console.warn('Speech synthesis not supported')
     return
   }
@@ -219,7 +258,15 @@ export function speakWord(word: string, language: string = 'en-US'): void {
   window.speechSynthesis.cancel()
 
   const utterance = new SpeechSynthesisUtterance(word)
-  ;(utterance as any).language = language
-  utterance.rate = 0.8 // Slower for clarity
+  utterance.lang = language
+  utterance.rate = getSpeechRate()
+
+  // Apply preferred voice — fall back to best available English voice
+  const voices = getEnglishVoices()
+  const preferredName = getPreferredVoiceName()
+  const voice = (preferredName ? voices.find(v => v.name === preferredName) : null)
+    ?? voices[0]  // first entry is best quality after sorting
+  if (voice) utterance.voice = voice
+
   window.speechSynthesis.speak(utterance)
 }

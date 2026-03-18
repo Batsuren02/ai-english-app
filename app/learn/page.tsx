@@ -400,73 +400,102 @@ export default function LearnPage() {
             className="absolute w-full h-full select-none"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', touchAction: 'none' }}
           >
-            <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col bg-gradient-to-br from-indigo-500/10 to-blue-500/10">
-              <div className="text-center mb-4">
-                <h2 className="text-[22px] font-bold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>{current.word}</h2>
-                <p className="text-[11px] text-[var(--text-secondary)] mt-1 uppercase tracking-widest">Tap to flip back & swipe</p>
-              </div>
+            <SurfaceCard padding="lg" className="relative h-full flex flex-col overflow-hidden">
 
-              <div className="flex-1 overflow-y-auto space-y-4">
-                <div className="flex flex-wrap gap-2 justify-center">
+              {/* ── Compact header row ── */}
+              <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-[var(--border)]">
+                {/* Word + audio */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <button
+                    onClick={e => { e.stopPropagation(); speakWord(current.word) }}
+                    className="p-1.5 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all flex-shrink-0"
+                  >
+                    <Volume2 size={14} />
+                  </button>
+                  <h2
+                    className="text-[19px] font-bold text-[var(--text)] truncate"
+                    style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}
+                  >
+                    {current.word}
+                  </h2>
+                </div>
+
+                {/* Meta badges — CEFR + POS (parenthetical stripped for readability) */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   {current.part_of_speech && (
-                    <span className="label bg-[var(--accent)]/15 text-[var(--accent)] px-3 py-1.5 rounded-lg">{current.part_of_speech}</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)] max-w-[96px] truncate">
+                      {current.part_of_speech.split('(')[0].trim()}
+                    </span>
                   )}
                   {current.cefr_level && (
-                    <span className="label bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg">{current.cefr_level}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/12 text-indigo-500 dark:text-indigo-400">
+                      {current.cefr_level}
+                    </span>
                   )}
                 </div>
+              </div>
 
-                <div className="text-left">
-                  <p className="label text-[var(--text-secondary)] mb-1.5 text-xs">Definition</p>
-                  <p className="body text-[var(--text)] text-sm">{current.definition}</p>
+              {/* ── Scrollable content ── */}
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-3">
+
+                {/* Definition — biggest, boldest text on the card */}
+                <div>
+                  <p className="text-[15px] font-medium text-[var(--text)] leading-relaxed">
+                    {current.definition}
+                  </p>
                   {current.mongolian && (
-                    <p className="text-xs text-[var(--text-secondary)] italic mt-2">{current.mongolian}</p>
+                    <p className="text-[12px] text-[var(--text-secondary)] italic mt-1.5">
+                      🇲🇳 {current.mongolian}
+                    </p>
                   )}
                 </div>
 
+                {/* Example — left-accent border */}
                 {examples.length > 0 && (
-                  <div className="text-left">
-                    <p className="label text-[var(--text-secondary)] mb-1.5 text-xs">Example</p>
-                    <p className="body text-[var(--text)] text-sm italic">"{examples[0]}"</p>
+                  <div className="pl-3 border-l-2 border-[var(--accent)]/35">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]/60 mb-0.5">Example</p>
+                    <p className="text-[13px] text-[var(--text)] italic leading-relaxed">
+                      &ldquo;{examples[0]}&rdquo;
+                    </p>
                   </div>
                 )}
 
+                {/* Etymology — subtle amber hint */}
                 {current.etymology_hint && (
-                  <div className="text-left p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
-                    <p className="text-xs text-amber-700 dark:text-amber-300">💡 {current.etymology_hint}</p>
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
+                    <span className="text-[13px] flex-shrink-0 mt-px">💡</span>
+                    <p className="text-[12px] text-amber-600 dark:text-amber-400 leading-relaxed">
+                      {current.etymology_hint}
+                    </p>
                   </div>
                 )}
               </div>
 
-              {/* 4-Level Rating Buttons */}
-              <div className="mt-4 pt-4 border-t border-[var(--border)]" onClick={e => e.stopPropagation()}>
-                <p className="text-xs text-[var(--text-secondary)] text-center mb-3 uppercase tracking-widest font-semibold">How well did you know it?</p>
-                <div className="flex gap-2 justify-center">
+              {/* ── Rating buttons ── */}
+              <div className="mt-3 pt-3 border-t border-[var(--border)]" onClick={e => e.stopPropagation()}>
+                <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { label: 'Again', q: 0, color: '#ef4444', bg: 'rgba(239,68,68,0.1)', hover: 'rgba(239,68,68,0.2)' },
-                    { label: 'Hard',  q: 2, color: '#f97316', bg: 'rgba(249,115,22,0.1)', hover: 'rgba(249,115,22,0.2)' },
-                    { label: 'Good',  q: 3, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', hover: 'rgba(59,130,246,0.2)' },
-                    { label: 'Easy',  q: 5, color: '#22c55e', bg: 'rgba(34,197,94,0.1)',  hover: 'rgba(34,197,94,0.2)' },
+                    { label: 'Again', q: 0, color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+                    { label: 'Hard',  q: 2, color: '#f97316', bg: 'rgba(249,115,22,0.08)' },
+                    { label: 'Good',  q: 3, color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+                    { label: 'Easy',  q: 5, color: '#22c55e', bg: 'rgba(34,197,94,0.08)'  },
                   ].map(({ label, q, color, bg }, i) => (
                     <button
                       key={q}
                       onClick={() => rateWithQuality(q)}
-                      className="flex-1 py-3 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95 hover:opacity-90 flex flex-col items-center gap-0.5"
-                      style={{ background: bg, color, border: `1.5px solid ${color}40` }}
+                      className="py-2.5 rounded-xl transition-all duration-150 active:scale-95 hover:brightness-110 flex flex-col items-center gap-0.5"
+                      style={{ background: bg, color, border: `1.5px solid ${color}30` }}
                     >
-                      {label}
-                      <span className="text-[9px] opacity-50 hidden md:block">[{i + 1}]</span>
+                      <span className="text-[13px] font-bold leading-none">{label}</span>
+                      <span className="text-[9px] opacity-40 hidden md:block">[{i + 1}]</span>
                     </button>
                   ))}
                 </div>
+                <p className="hidden md:block text-[10px] text-center text-[var(--text-secondary)] opacity-40 mt-2">
+                  1 Again · 2 Hard · 3 Good · 4 Easy
+                </p>
               </div>
 
-              <p className="label text-[var(--text-secondary)] text-center text-xs mt-3 cursor-pointer hover:text-[var(--accent)] transition-colors">
-                Tap card to flip back
-              </p>
-              <p className="hidden md:block text-xs text-center text-[var(--text-secondary)] opacity-50 mt-1">
-                1 Again · 2 Hard · 3 Good · 4 Easy
-              </p>
             </SurfaceCard>
           </div>
         </div>

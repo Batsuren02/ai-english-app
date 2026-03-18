@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase, UserProfile } from '@/lib/supabase'
-import { Save, Copy, Check, AlertCircle, Eye, Palette, LayoutList } from 'lucide-react'
+import { Save, Copy, Check, AlertCircle, Eye, Palette, LayoutList, Volume2 } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
 import NotificationSettings from '@/components/NotificationSettings'
+import VoiceSelector from '@/components/VoiceSelector'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -235,6 +236,18 @@ export default function SettingsPage() {
           </div>
 
         </div>
+      </SurfaceCard>
+
+      {/* Voice & Speech */}
+      <SurfaceCard padding="lg">
+        <div className="flex items-center gap-2 mb-5">
+          <Volume2 size={18} className="text-[var(--accent)]" />
+          <h3 className="h3 text-[var(--text)]">Voice & Speech</h3>
+        </div>
+        <p className="text-[13px] text-[var(--text-secondary)] mb-5">
+          Choose a voice for pronunciation playback. Natural voices sound much more human.
+        </p>
+        <VoiceSelector />
       </SurfaceCard>
 
       {/* Interleaving Settings */}
