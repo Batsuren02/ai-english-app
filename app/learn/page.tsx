@@ -234,7 +234,7 @@ export default function LearnPage() {
             className="absolute w-full h-full select-none"
             style={{ backfaceVisibility: 'hidden', touchAction: 'none' }}
           >
-            <SurfaceCard padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)] overflow-hidden">
+            <SurfaceCard hover={false} padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)] overflow-hidden">
 
               {/* Progressive color overlay */}
               {dragX !== 0 && (
@@ -400,30 +400,27 @@ export default function LearnPage() {
             className="absolute w-full h-full select-none"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', touchAction: 'none' }}
           >
-            <SurfaceCard padding="lg" className="relative h-full flex flex-col overflow-hidden">
+            <SurfaceCard hover={false} padding="lg" className="relative h-full flex flex-col overflow-hidden">
 
-              {/* ── Compact header row ── */}
-              <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-[var(--border)]">
-                {/* Word + audio */}
-                <div className="flex items-center gap-2 flex-1 min-w-0">
+              {/* ── Top row: word + badges + audio ── */}
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2 min-w-0">
                   <button
                     onClick={e => { e.stopPropagation(); speakWord(current.word) }}
                     className="p-1.5 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all flex-shrink-0"
                   >
                     <Volume2 size={14} />
                   </button>
-                  <h2
-                    className="text-[19px] font-bold text-[var(--text)] truncate"
+                  <span
+                    className="text-[15px] font-bold text-[var(--text-secondary)] truncate"
                     style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}
                   >
                     {current.word}
-                  </h2>
+                  </span>
                 </div>
-
-                {/* Meta badges — CEFR + POS (parenthetical stripped for readability) */}
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   {current.part_of_speech && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)] max-w-[96px] truncate">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)] max-w-[90px] truncate">
                       {current.part_of_speech.split('(')[0].trim()}
                     </span>
                   )}
@@ -435,32 +432,33 @@ export default function LearnPage() {
                 </div>
               </div>
 
-              {/* ── Scrollable content ── */}
-              <div className="flex-1 overflow-y-auto min-h-0 space-y-3">
-
-                {/* Definition — biggest, boldest text on the card */}
-                <div>
-                  <p className="text-[15px] font-medium text-[var(--text)] leading-relaxed">
-                    {current.definition}
+              {/* ── Definition — the star of the card ── */}
+              <div className="rounded-xl px-4 py-3.5 mb-3" style={{ background: 'color-mix(in srgb, var(--accent) 7%, var(--surface))' }}>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]/70 mb-1.5">Definition</p>
+                <p className="text-[18px] font-semibold text-[var(--text)] leading-snug">
+                  {current.definition}
+                </p>
+                {current.mongolian && (
+                  <p className="text-[13px] text-[var(--text-secondary)] italic mt-2 pt-2 border-t border-[var(--border)]">
+                    🇲🇳 {current.mongolian}
                   </p>
-                  {current.mongolian && (
-                    <p className="text-[12px] text-[var(--text-secondary)] italic mt-1.5">
-                      🇲🇳 {current.mongolian}
-                    </p>
-                  )}
-                </div>
+                )}
+              </div>
 
-                {/* Example — left-accent border */}
+              {/* ── Scrollable extras ── */}
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-2.5">
+
+                {/* Example sentence */}
                 {examples.length > 0 && (
-                  <div className="pl-3 border-l-2 border-[var(--accent)]/35">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]/60 mb-0.5">Example</p>
-                    <p className="text-[13px] text-[var(--text)] italic leading-relaxed">
+                  <div className="rounded-xl px-4 py-3.5" style={{ background: 'color-mix(in srgb, var(--accent) 7%, var(--surface))' }}>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]/70 mb-1.5">Example</p>
+                    <p className="text-[14px] text-[var(--text)] italic leading-relaxed">
                       &ldquo;{examples[0]}&rdquo;
                     </p>
                   </div>
                 )}
 
-                {/* Etymology — subtle amber hint */}
+                {/* Etymology */}
                 {current.etymology_hint && (
                   <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
                     <span className="text-[13px] flex-shrink-0 mt-px">💡</span>
@@ -483,17 +481,14 @@ export default function LearnPage() {
                     <button
                       key={q}
                       onClick={() => rateWithQuality(q)}
-                      className="py-2.5 rounded-xl transition-all duration-150 active:scale-95 hover:brightness-110 flex flex-col items-center gap-0.5"
-                      style={{ background: bg, color, border: `1.5px solid ${color}30` }}
+                      className="py-3 rounded-xl transition-all duration-150 active:scale-95 flex flex-col items-center gap-0.5"
+                      style={{ background: bg, color, border: `1.5px solid ${color}35` }}
                     >
                       <span className="text-[13px] font-bold leading-none">{label}</span>
                       <span className="text-[9px] opacity-40 hidden md:block">[{i + 1}]</span>
                     </button>
                   ))}
                 </div>
-                <p className="hidden md:block text-[10px] text-center text-[var(--text-secondary)] opacity-40 mt-2">
-                  1 Again · 2 Hard · 3 Good · 4 Easy
-                </p>
               </div>
 
             </SurfaceCard>
