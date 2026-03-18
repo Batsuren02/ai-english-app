@@ -59,8 +59,8 @@ export type ReviewLog = {
 
 export type UserProfile = {
   id: string
-  cefr_level: string
-  goal: string
+  cefr_level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
+  goal: 'general' | 'ielts' | 'business' | 'travel'
   daily_target_minutes: number
   current_streak: number
   longest_streak: number

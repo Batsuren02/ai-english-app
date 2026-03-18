@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, ReviewLog, Review, Word, UserProfile } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { format, addDays, startOfDay, formatDistanceToNow } from 'date-fns'
 import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, BookOpen, Clock, CalendarDays } from 'lucide-react'
@@ -13,15 +13,15 @@ import EmptyState from '@/components/design/EmptyState'
 import Link from 'next/link'
 
 export default function StatsPage() {
-  const [weeklyData, setWeeklyData] = useState<any[]>([])
-  const [quizTypeData, setQuizTypeData] = useState<any[]>([])
+  const [weeklyData, setWeeklyData] = useState<{ date: string; total: number; correct: number }[]>([])
+  const [quizTypeData, setQuizTypeData] = useState<{ type: string; accuracy: number; count: number }[]>([])
   const [calendarData, setCalendarData] = useState<Record<string, number>>({})
-  const [wordsPerLevel, setWordsPerLevel] = useState<any[]>([])
-  const [weakWords, setWeakWords] = useState<any[]>([])
+  const [wordsPerLevel, setWordsPerLevel] = useState<{ level: string; count: number }[]>([])
+  const [weakWords, setWeakWords] = useState<(Pick<Word, 'word' | 'definition'> & { ease_factor: number })[]>([])
   const [totalReviews, setTotalReviews] = useState(0)
   const [avgAccuracy, setAvgAccuracy] = useState(0)
   const [totalWords, setTotalWords] = useState(0)
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [forecastData, setForecastData] = useState<{ day: string; count: number }[]>([])
   const [avgStudyMinutes, setAvgStudyMinutes] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -50,8 +50,8 @@ export default function StatsPage() {
       const forecast = Array.from({ length: 7 }, (_, i) => {
         const day = addDays(todayStart, i)
         const dayStr = day.toISOString().split('T')[0]
-        const count = forecastRes.data!.filter((r: any) => {
-          const reviewDay = typeof r.next_review === 'string' ? r.next_review.split('T')[0] : r.next_review
+        const count = forecastRes.data!.filter((r: Pick<Review, 'next_review'>) => {
+          const reviewDay = r.next_review.split('T')[0]
           return reviewDay === dayStr
         }).length
         return { day: i === 0 ? 'Today' : format(day, 'EEE'), count }
@@ -60,9 +60,9 @@ export default function StatsPage() {
     }
 
     if (logsRes.data) {
-      const logs = logsRes.data
+      const logs: ReviewLog[] = logsRes.data
       setTotalReviews(logs.length)
-      const correct = logs.filter((l: any) => l.result >= 3).length
+      const correct = logs.filter((l: ReviewLog) => l.result >= 3).length
       setAvgAccuracy(logs.length ? Math.round(correct / logs.length * 100) : 0)
 
       // 7-day chart
@@ -71,7 +71,7 @@ export default function StatsPage() {
         const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
         days[d] = { total: 0, correct: 0 }
       }
-      logs.forEach((l: any) => {
+      logs.forEach((l: ReviewLog) => {
         const d = l.created_at.split('T')[0]
         if (days[d]) { days[d].total++; if (l.result >= 3) days[d].correct++ }
       })
@@ -79,12 +79,12 @@ export default function StatsPage() {
 
       // Calendar: last 12 weeks
       const cal: Record<string, number> = {}
-      logs.forEach((l: any) => { const d = l.created_at.split('T')[0]; cal[d] = (cal[d] || 0) + 1 })
+      logs.forEach((l: ReviewLog) => { const d = l.created_at.split('T')[0]; cal[d] = (cal[d] || 0) + 1 })
       setCalendarData(cal)
 
       // Avg daily study time from response_time_ms
       const dayTotals = new Map<string, number>()
-      logs.forEach((l: any) => {
+      logs.forEach((l: ReviewLog) => {
         if (l.response_time_ms > 0) {
           const day = l.created_at.split('T')[0]
           dayTotals.set(day, (dayTotals.get(day) ?? 0) + l.response_time_ms)
@@ -96,7 +96,7 @@ export default function StatsPage() {
 
       // Quiz type accuracy
       const types: Record<string, { total: number; correct: number }> = {}
-      logs.forEach((l: any) => {
+      logs.forEach((l: ReviewLog) => {
         if (!types[l.quiz_type]) types[l.quiz_type] = { total: 0, correct: 0 }
         types[l.quiz_type].total++; if (l.result >= 3) types[l.quiz_type].correct++
       })
@@ -105,12 +105,22 @@ export default function StatsPage() {
 
     if (wordsRes.data) {
       const lvls: Record<string, number> = {}
-      wordsRes.data.forEach((w: any) => { if (w.cefr_level) lvls[w.cefr_level] = (lvls[w.cefr_level] || 0) + 1 })
+      wordsRes.data.forEach((w: Pick<Word, 'id' | 'cefr_level' | 'category'>) => { if (w.cefr_level) lvls[w.cefr_level] = (lvls[w.cefr_level] || 0) + 1 })
       setWordsPerLevel(Object.entries(lvls).map(([level, count]) => ({ level, count })))
     }
 
     if (reviewsRes.data) {
-      setWeakWords(reviewsRes.data.filter((r: any) => r.words).map((r: any) => ({ ...r.words, ease_factor: r.ease_factor })))
+      type WordEmbed = { word: string; definition: string }
+      type ReviewWithWord = { word_id: string; ease_factor: number; words: WordEmbed | WordEmbed[] | null }
+      const typed = reviewsRes.data as ReviewWithWord[]
+      setWeakWords(
+        typed
+          .filter((r) => r.words)
+          .map((r) => {
+            const w = Array.isArray(r.words) ? r.words[0] : r.words!
+            return { word: w.word, definition: w.definition, ease_factor: r.ease_factor }
+          })
+      )
     }
 
     } catch (err) {
@@ -385,7 +395,7 @@ export default function StatsPage() {
             <h3 className="h4 text-[var(--text)]">Weakest Words (by ease factor)</h3>
           </div>
           <div className="space-y-3">
-            {weakWords.slice(0, 7).map((w: any, i: number) => (
+            {weakWords.slice(0, 7).map((w, i) => (
               <div key={i} className="flex justify-between items-start gap-3 pb-3 border-b border-[var(--border)] last:border-0">
                 <div className="flex-1">
                   <p className="font-semibold text-[var(--text)]">{w.word}</p>

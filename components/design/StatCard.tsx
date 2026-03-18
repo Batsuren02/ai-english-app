@@ -18,7 +18,7 @@ interface StatCardProps {
  * StatCard - Dashboard stat display component
  * Shows a single stat with icon, label, and value
  */
-export function StatCard({
+function StatCardBase({
   icon,
   label,
   value,
@@ -32,21 +32,26 @@ export function StatCard({
   useEffect(() => {
     if (!animated || typeof value !== 'number') return
 
-    let current = 0
-    const target = value as number
-    const increment = target / 20
+    let rafId: number
+    let start: number | null = null
+    const duration = 800
+    const from = 0
+    const to = value as number
 
-    const interval = setInterval(() => {
-      current += increment
-      if (current >= target) {
-        setDisplayValue(Math.round(target))
-        clearInterval(interval)
-      } else {
-        setDisplayValue(Math.round(current))
+    const step = (timestamp: number) => {
+      if (!start) start = timestamp
+      const elapsed = timestamp - start
+      const progress = Math.min(elapsed / duration, 1)
+      // ease-out-cubic
+      const ease = 1 - Math.pow(1 - progress, 3)
+      setDisplayValue(Math.round(from + (to - from) * ease))
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step)
       }
-    }, 30)
+    }
 
-    return () => clearInterval(interval)
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
   }, [value, animated])
 
   const trendColor = trend?.direction === 'up' ? 'var(--success)' : 'var(--error)'
@@ -96,5 +101,7 @@ export function StatCard({
     </div>
   )
 }
+
+export const StatCard = React.memo(StatCardBase)
 
 export default StatCard

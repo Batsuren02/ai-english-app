@@ -16,7 +16,7 @@ interface EmptyStateProps {
  * EmptyState - Display empty state with animated icon placeholder
  * Features: Centered layout, animated icon with bounce, CTA support
  */
-export function EmptyState({
+const EmptyState = React.memo(function EmptyState({
   icon,
   title,
   description,
@@ -61,6 +61,6 @@ export function EmptyState({
       )}
     </div>
   )
-}
+})
 
 export default EmptyState

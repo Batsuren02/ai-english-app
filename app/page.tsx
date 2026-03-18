@@ -25,7 +25,7 @@ export default function Dashboard() {
 
   useEffect(() => { loadDashboard() }, [])
 
-  async function loadDashboard() {
+  async function loadDashboard(): Promise<void> {
     try {
       const today = new Date().toISOString().split('T')[0]
       const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([

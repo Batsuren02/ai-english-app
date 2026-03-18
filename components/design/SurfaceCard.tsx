@@ -18,7 +18,7 @@ interface SurfaceCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * SurfaceCard - Reusable card component with theme-aware styling
  * Provides consistent card styling with optional hover effects
  */
-export function SurfaceCard({
+const SurfaceCard = React.memo(function SurfaceCard({
   hover = true,
   depth = 1,
   padding = 'md',
@@ -74,6 +74,6 @@ export function SurfaceCard({
       )}
     </div>
   )
-}
+})
 
 export default SurfaceCard

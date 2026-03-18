@@ -81,7 +81,9 @@
       "Bash(grep -n \"^body\\\\|^html\\\\|^html,\\\\|html {\" /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/app/globals.css)",
       "Bash(cmd /c \"wmic process where ProcessId=52604 get Name,CommandLine 2>&1\")",
       "Bash(cmd /c \"tasklist /FI \"\"PID eq 52604\"\" 2>&1\")",
-      "Bash(cmd /c \"taskkill /F /PID 52604\")"
+      "Bash(cmd /c \"taskkill /F /PID 52604\")",
+      "Bash(find \"C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/lib\" -name \"*.ts\" -exec wc -l {} +)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { motion } from 'framer-motion'
 import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
 import { speakWord } from '@/lib/speech-utils'
@@ -368,12 +367,7 @@ export default function LearnPage() {
     const correct = results.filter(r => r.correct).length
     const accuracy = Math.round(correct / results.length * 100)
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="max-w-2xl mx-auto space-y-6 relative"
-      >
+      <div className="fade-in-up max-w-2xl mx-auto space-y-6 relative">
         <CelebrationBanner active />
         <div className="text-center scale-in">
           <div className="flex justify-center mb-4 bounce-in">
@@ -425,7 +419,7 @@ export default function LearnPage() {
             Start New Session
           </InteractiveButton>
         </div>
-      </motion.div>
+      </div>
     )
   }
 

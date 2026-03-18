@@ -39,7 +39,11 @@ export default function SettingsPage() {
     })
   }, [])
 
-  async function save() {
+  async function save(): Promise<void> {
+    if (!profile.id) {
+      setError('Profile not loaded yet. Please wait and try again.')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -47,7 +51,7 @@ export default function SettingsPage() {
       const { error: updateError } = await supabase
         .from('user_profile')
         .update({ ...profile, daily_target_minutes: clampedMinutes, updated_at: new Date().toISOString() })
-        .eq('id', (profile as any).id)
+        .eq('id', profile.id)
 
       if (updateError) {
         setError(`Failed to save settings: ${updateError.message}`)
@@ -139,7 +143,7 @@ export default function SettingsPage() {
               <select
                 className="input w-full"
                 value={profile.cefr_level}
-                onChange={e => setProfile(p => ({ ...p, cefr_level: e.target.value }))}
+                onChange={e => setProfile(p => ({ ...p, cefr_level: e.target.value as UserProfile['cefr_level'] }))}
               >
                 {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
               </select>
@@ -151,7 +155,7 @@ export default function SettingsPage() {
               <select
                 className="input w-full"
                 value={profile.goal}
-                onChange={e => setProfile(p => ({ ...p, goal: e.target.value }))}
+                onChange={e => setProfile(p => ({ ...p, goal: e.target.value as UserProfile['goal'] }))}
               >
                 {['general','ielts','business','travel'].map(g => (
                   <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>

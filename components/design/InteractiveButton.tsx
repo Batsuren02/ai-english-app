@@ -16,7 +16,7 @@ interface InteractiveButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
  * InteractiveButton - Button with theme-aware styling and hover effects
  * Provides consistent button styling with scale + shadow on hover (bold effect)
  */
-export const InteractiveButton = React.forwardRef<HTMLButtonElement, InteractiveButtonProps>(
+const InteractiveButtonBase = React.forwardRef<HTMLButtonElement, InteractiveButtonProps>(
   ({ variant = 'primary', size = 'md', className, children, isLoading = false, pulse = false, disabled, ...props }, ref) => {
     const variantClass = {
       primary: 'bg-[var(--accent)] text-white hover:brightness-105 hover:shadow-md',
@@ -60,6 +60,8 @@ export const InteractiveButton = React.forwardRef<HTMLButtonElement, Interactive
   }
 )
 
-InteractiveButton.displayName = 'InteractiveButton'
+InteractiveButtonBase.displayName = 'InteractiveButton'
+
+export const InteractiveButton = React.memo(InteractiveButtonBase)
 
 export default InteractiveButton

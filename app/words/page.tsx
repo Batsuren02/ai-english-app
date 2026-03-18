@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, Word, Review } from '@/lib/supabase'
 import Papa from 'papaparse'
-import { Plus, Search, Download, X, Volume2, Copy, Check, Trash2, Star, Eye, ArrowDownAZ, SortAsc } from 'lucide-react'
+import { Plus, Download, Copy, Check } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
-import { speakWord } from '@/lib/speech-utils'
 
 // V2.0 Components
-import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
 import { SkeletonWordCard } from '@/components/design/Skeleton'
@@ -16,26 +14,18 @@ import { SkeletonWordCard } from '@/components/design/Skeleton'
 // shadcn components
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
 import { useToastContext } from '@/components/ToastProvider'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-const CATEGORIES = ['academic', 'business', 'daily', 'idiom', 'phrasal_verb'] as const
-const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
+// Words feature components
+import WordCard from '@/components/words/WordCard'
+import WordFilters from '@/components/words/WordFilters'
+import WordModal from '@/components/words/WordModal'
+import { WordWithReview, CATEGORIES, LEVELS } from '@/components/words/types'
 
-interface WordWithReview extends Word {
-  review?: Review
-  masteryLevel?: 'mastered' | 'learning' | 'needs_review'
-  progressPercent?: number
-}
-
+// ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 30
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -254,7 +244,6 @@ export default function WordsPage() {
       toast.success(`"${editForm.word || selectedWord.word}" updated!`)
       setEditMode(false)
       await loadWords()
-      // Update selectedWord in place so modal stays open with fresh data
       setSelectedWord(prev => prev ? { ...prev, ...editForm } as WordWithReview : null)
     } else {
       toast.error('Failed to update word')
@@ -318,60 +307,6 @@ export default function WordsPage() {
     toast.success(`Exported ${words.length} words`)
   }
 
-
-
-  // ── Helper functions ──────────────────────────────────────────────────────
-  function getMasteryAccent(level?: string): string {
-    switch (level) {
-      case 'mastered':    return '#10b981'
-      case 'learning':    return '#3b82f6'
-      case 'needs_review': return '#f59e0b'
-      default:            return 'var(--border)'
-    }
-  }
-
-  function getMasteryBadgeColor(level?: string): string {
-    switch (level) {
-      case 'mastered':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-      case 'learning':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-      case 'needs_review':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-      default:
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300'
-    }
-  }
-
-  function getMasteryLabel(level?: string): string {
-    switch (level) {
-      case 'mastered':
-        return '✓ Mastered'
-      case 'learning':
-        return '◐ Learning'
-      case 'needs_review':
-        return '○ Needs Review'
-      default:
-        return 'Not Reviewed'
-    }
-  }
-
-  function getLevelColor(level: string): string {
-    switch (level) {
-      case 'A1':
-      case 'A2':
-        return 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-      case 'B1':
-      case 'B2':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-      case 'C1':
-      case 'C2':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
-      default:
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300'
-    }
-  }
-
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -426,88 +361,18 @@ export default function WordsPage() {
       </div>
 
       {/* ── Sticky Search + Filters ──────────────────────────────────────────── */}
-      <div className="sticky top-[40px] md:top-0 z-10 bg-[var(--bg)] py-2 space-y-3">
-        {/* Search bar */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
-          <Input
-            placeholder="Search words or definitions…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Mastery pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {[
-            { value: 'all', label: 'All' },
-            { value: 'needs_review', label: 'Needs Review' },
-            { value: 'learning', label: 'Learning' },
-            { value: 'mastered', label: 'Mastered' },
-          ].map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setFilterMastery(value)}
-              className={cn(
-                'whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0',
-                filterMastery === value
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--accent)]/40'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Other filters row */}
-        <div className="flex flex-wrap gap-2">
-          {/* Category filter */}
-          <Select value={filterCat} onValueChange={setFilterCat}>
-            <SelectTrigger className="w-auto min-w-[150px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c.replace('_', ' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Level filter */}
-          <Select value={filterLevel} onValueChange={setFilterLevel}>
-            <SelectTrigger className="w-auto min-w-[130px]">
-              <SelectValue placeholder="All Levels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {LEVELS.map((l) => (
-                <SelectItem key={l} value={l}>
-                  {l}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Sort */}
-          <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-auto min-w-[150px]">
-              <SortAsc size={13} className="mr-1.5 text-[var(--text-secondary)]" />
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Needs Review First</SelectItem>
-              <SelectItem value="alpha">A → Z</SelectItem>
-              <SelectItem value="hardest">Hardest First</SelectItem>
-              <SelectItem value="most_reviewed">Most Reviewed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <WordFilters
+        search={search}
+        setSearch={setSearch}
+        filterCat={filterCat}
+        setFilterCat={setFilterCat}
+        filterLevel={filterLevel}
+        setFilterLevel={setFilterLevel}
+        filterMastery={filterMastery}
+        setFilterMastery={setFilterMastery}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+      />
 
       {/* ── Word Grid (Card-based layout) ────────────────────────────────────── */}
       {filtered.length === 0 ? (
@@ -536,94 +401,15 @@ export default function WordsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-max">
           {filtered.map((w) => (
-            <div
+            <WordCard
               key={w.id}
-              className={cn(
-                'group relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 cursor-pointer transition-all duration-200 border-l-4',
-                !showDetails && 'hover:shadow-md hover:-translate-y-0.5'
-              )}
-              style={{ borderLeftColor: getMasteryAccent(w.masteryLevel) }}
-              onClick={() => {
-                setSelectedWord(w)
+              word={w}
+              showDetails={showDetails}
+              onSelect={(word) => {
+                setSelectedWord(word)
                 setShowDetails(true)
               }}
-            >
-              {/* Top section: Word + Badges */}
-              <div className="space-y-3">
-                {/* Word title with pronunciation */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="h4 text-[var(--text)] truncate font-semibold">{w.word}</h3>
-                    {w.ipa && (
-                      <p className="text-xs text-[var(--text-secondary)] truncate mt-1">{w.ipa}</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      speakWord(w.word)
-                    }}
-                    className="p-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all flex-shrink-0"
-                    title="Pronounce"
-                  >
-                    <Volume2 size={14} />
-                  </button>
-                </div>
-
-                {/* Definition preview */}
-                <p className="body text-[var(--text)] line-clamp-2 leading-relaxed">{w.definition}</p>
-
-                {/* Badges row */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Badge variant="outline" className={`text-xs ${getMasteryBadgeColor(w.masteryLevel)}`}>
-                    {getMasteryLabel(w.masteryLevel)}
-                  </Badge>
-                  {w.cefr_level && (
-                    <Badge variant="outline" className={`text-xs ${getLevelColor(w.cefr_level)}`}>
-                      {w.cefr_level}
-                    </Badge>
-                  )}
-                  {w.category && (
-                    <Badge variant="outline" className="text-xs">
-                      {w.category.replace('_', ' ')}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Progress ring/bar - Visual mastery indicator */}
-                <div className="pt-2">
-                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                    <div className="flex-1 h-1.5 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          'h-full rounded-full transition-all duration-500 bg-gradient-to-r',
-                          w.masteryLevel === 'mastered'
-                            ? 'from-emerald-400 to-emerald-500'
-                            : w.masteryLevel === 'learning'
-                              ? 'from-blue-400 to-blue-500'
-                              : 'from-amber-400 to-amber-500'
-                        )}
-                        style={{ width: `${w.progressPercent || 0}%` }}
-                      />
-                    </div>
-                    <span>{Math.round(w.progressPercent || 0)}%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Review count indicator */}
-              {w.review && (
-                <div className="absolute top-3 right-3 flex items-center gap-1 text-xs bg-[var(--bg)] border border-[var(--border)] px-2 py-1 rounded-lg text-[var(--text-secondary)]">
-                  <Eye size={11} />
-                  {w.review.repetitions}
-                </div>
-              )}
-
-              {/* Hover action hint */}
-              <div className="absolute inset-0 rounded-xl bg-[var(--accent)]/0 group-hover:bg-[var(--accent)]/5 transition-colors pointer-events-none flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <span className="text-xs font-medium text-[var(--accent)]">Click to view</span>
-              </div>
-            </div>
+            />
           ))}
 
           {/* Load More — only shown when no active filters (filters work on loaded words) */}
@@ -644,298 +430,23 @@ export default function WordsPage() {
       )}
 
       {/* ── Word Detail Modal ────────────────────────────────────────────────── */}
-      {selectedWord && showDetails && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm backdrop-enter"
-            onClick={() => { setShowDetails(false); setEditMode(false) }}
-          />
-
-          {/* Modal */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="modal-enter w-full max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto bg-[var(--bg-card)] rounded-xl overflow-hidden border border-[var(--border)]" style={{ boxShadow: 'var(--shadow-2xl)' }}>
-              {/* Modal header */}
-              <div className="flex items-start justify-between gap-4 p-6 border-b border-[var(--border)] flex-shrink-0">
-                <div className="flex-1 min-w-0">
-                  <h2 className="h3 text-[var(--text)] flex items-center gap-2 flex-wrap">
-                    <span className="truncate">{selectedWord.word}</span>
-                    <button
-                      onClick={() => speakWord(selectedWord.word)}
-                      className="p-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-all flex-shrink-0"
-                      title="Pronounce"
-                    >
-                      <Volume2 size={16} />
-                    </button>
-                  </h2>
-                  {selectedWord.ipa && (
-                    <p className="label text-[var(--text-secondary)] mt-2">{selectedWord.ipa}</p>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowDetails(false)}
-                  className="flex-shrink-0"
-                >
-                  <X size={18} />
-                </Button>
-              </div>
-
-              {/* Modal body - scrollable */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Edit Form */}
-                {editMode && (
-                  <div className="p-6 space-y-4">
-                    {([
-                      { key: 'word', label: 'Word', placeholder: 'e.g. eloquent' },
-                      { key: 'definition', label: 'Definition', placeholder: 'English definition…' },
-                      { key: 'mongolian', label: 'Mongolian', placeholder: 'Mongolian translation…' },
-                      { key: 'ipa', label: 'IPA', placeholder: '/ɛləkwənt/' },
-                      { key: 'part_of_speech', label: 'Part of Speech', placeholder: 'noun, verb, adjective…' },
-                    ] as const).map(({ key, label, placeholder }) => (
-                      <div key={key} className="space-y-1.5">
-                        <label className="label text-[var(--text)]">{label}</label>
-                        <Input
-                          placeholder={placeholder}
-                          value={(editForm as any)[key] || ''}
-                          onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
-                        />
-                      </div>
-                    ))}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="label text-[var(--text)]">CEFR Level</label>
-                        <Select value={editForm.cefr_level || 'B1'} onValueChange={v => setEditForm(p => ({ ...p, cefr_level: v as Word['cefr_level'] }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>{LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="label text-[var(--text)]">Category</label>
-                        <Select value={editForm.category || 'daily'} onValueChange={v => setEditForm(p => ({ ...p, category: v as Word['category'] }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace('_', ' ')}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="label text-[var(--text)]">Personal Notes</label>
-                      <Textarea
-                        placeholder="Mnemonics, memory tricks, context, example sentences…"
-                        rows={3}
-                        value={(editForm as any).notes || ''}
-                        onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                )}
-                {/* View Mode */}
-                {!editMode && <div className="p-6 space-y-6">
-                  {/* Mastery status */}
-                  <div>
-                    <p className="label text-[var(--text-secondary)] mb-2 uppercase tracking-wide">
-                      Progress
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <Badge className={`${getMasteryBadgeColor(selectedWord.masteryLevel)}`}>
-                        {getMasteryLabel(selectedWord.masteryLevel)}
-                      </Badge>
-                      <div className="flex-1 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            'h-full rounded-full bg-gradient-to-r',
-                            selectedWord.masteryLevel === 'mastered'
-                              ? 'from-emerald-400 to-emerald-500'
-                              : selectedWord.masteryLevel === 'learning'
-                                ? 'from-blue-400 to-blue-500'
-                                : 'from-amber-400 to-amber-500'
-                          )}
-                          style={{ width: `${selectedWord.progressPercent || 0}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-medium text-[var(--text-secondary)] min-w-[40px]">
-                        {Math.round(selectedWord.progressPercent || 0)}%
-                      </span>
-                    </div>
-                    {selectedWord.review && (
-                      <p className="text-xs text-[var(--text-secondary)] mt-2">
-                        Reviewed {selectedWord.review.repetitions} times
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex flex-wrap gap-2">
-                    {selectedWord.part_of_speech && (
-                      <Badge variant="outline" className="text-xs">
-                        {selectedWord.part_of_speech}
-                      </Badge>
-                    )}
-                    {selectedWord.cefr_level && (
-                      <Badge className={`text-xs ${getLevelColor(selectedWord.cefr_level)}`}>
-                        {selectedWord.cefr_level}
-                      </Badge>
-                    )}
-                    {selectedWord.category && (
-                      <Badge variant="outline" className="text-xs">
-                        {selectedWord.category.replace('_', ' ')}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Definition */}
-                  <div>
-                    <p className="label text-[var(--text-secondary)] mb-2 uppercase tracking-wide">
-                      Definition
-                    </p>
-                    <p className="body text-[var(--text)] leading-relaxed">{selectedWord.definition}</p>
-                    {selectedWord.mongolian && (
-                      <p className="text-sm text-[var(--text-secondary)] italic mt-3">
-                        {selectedWord.mongolian}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Examples */}
-                  {(selectedWord.examples as string[] | undefined || []).length > 0 && (
-                    <div>
-                      <p className="label text-[var(--text-secondary)] mb-3 uppercase tracking-wide">
-                        Examples
-                      </p>
-                      <div className="space-y-2">
-                        {(selectedWord.examples as string[]).map((ex, i) => (
-                          <p
-                            key={i}
-                            className="text-sm text-[var(--text)] italic px-3 py-2 bg-[var(--bg)] rounded border-l-2 border-[var(--accent)]"
-                          >
-                            "{ex}"
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Collocations */}
-                  {(selectedWord.collocations as string[] | undefined || []).length > 0 && (
-                    <div>
-                      <p className="label text-[var(--text-secondary)] mb-3 uppercase tracking-wide">
-                        Collocations
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {(selectedWord.collocations as string[]).map((c) => (
-                          <Badge key={c} variant="outline" className="text-xs">
-                            {c}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Memory hint */}
-                  {selectedWord.etymology_hint && (
-                    <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
-                      <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed">
-                        💡 {selectedWord.etymology_hint}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Personal notes */}
-                  {selectedWord.notes && (
-                    <div>
-                      <p className="label text-[var(--text-secondary)] mb-2 uppercase tracking-wide">My Notes</p>
-                      <blockquote className="text-sm text-[var(--text)] px-3 py-2 bg-[var(--bg)] rounded border-l-2 border-[var(--accent)]/50 italic leading-relaxed">
-                        {selectedWord.notes}
-                      </blockquote>
-                    </div>
-                  )}
-                </div>}
-              </div>
-
-              {/* Modal footer - sticky */}
-              <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-card)] flex gap-2 flex-shrink-0">
-                {editMode ? (
-                  <>
-                    <InteractiveButton
-                      variant="ghost"
-                      size="md"
-                      className="flex-1"
-                      onClick={() => setEditMode(false)}
-                    >
-                      Cancel
-                    </InteractiveButton>
-                    <InteractiveButton
-                      variant="primary"
-                      size="md"
-                      className="flex-1 flex items-center justify-center gap-2"
-                      onClick={updateWord}
-                      isLoading={saving}
-                    >
-                      <Check size={16} />
-                      Save Changes
-                    </InteractiveButton>
-                  </>
-                ) : (
-                  <>
-                    <InteractiveButton
-                      variant="secondary"
-                      size="md"
-                      className="flex-1 flex items-center justify-center gap-2"
-                      onClick={() => {
-                        setEditForm({
-                          word: selectedWord.word,
-                          definition: selectedWord.definition,
-                          mongolian: selectedWord.mongolian || '',
-                          ipa: selectedWord.ipa || '',
-                          part_of_speech: selectedWord.part_of_speech || '',
-                          cefr_level: selectedWord.cefr_level || 'B1',
-                          category: selectedWord.category || 'daily',
-                          notes: selectedWord.notes || '',
-                        })
-                        setEditMode(true)
-                      }}
-                    >
-                      <Star size={16} />
-                      Edit
-                    </InteractiveButton>
-                    <InteractiveButton
-                      variant="danger"
-                      size="md"
-                      className="flex-1 flex items-center justify-center gap-2"
-                      onClick={() => setDeleteConfirmId(selectedWord.id)}
-                    >
-                      <Trash2 size={16} />
-                      Delete
-                    </InteractiveButton>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </>
+      {selectedWord && (
+        <WordModal
+          selectedWord={selectedWord}
+          showDetails={showDetails}
+          editMode={editMode}
+          editForm={editForm}
+          saving={saving}
+          deleteConfirmId={deleteConfirmId}
+          words={words}
+          setShowDetails={(v) => { setShowDetails(v); if (!v) setEditMode(false) }}
+          setEditMode={setEditMode}
+          setEditForm={setEditForm}
+          setDeleteConfirmId={setDeleteConfirmId}
+          onUpdateWord={updateWord}
+          onDeleteWord={deleteWord}
+        />
       )}
-
-      {/* ── Delete Confirm Dialog ──────────────────────────────────────────── */}
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={open => !open && setDeleteConfirmId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete &ldquo;{words.find(w => w.id === deleteConfirmId)?.word}&rdquo;?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the word and all its review history. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => deleteConfirmId && deleteWord(deleteConfirmId)}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* ── Add Word Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
@@ -971,26 +482,22 @@ export default function WordsPage() {
                     className="flex-shrink-0"
                   >
                     {copied === importWord ? (
-                      <>
-                        <Check size={14} className="text-green-600" />
-                      </>
+                      <Check size={14} className="text-green-600" />
                     ) : (
-                      <>
-                        <Copy size={14} />
-                      </>
+                      <Copy size={14} />
                     )}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="label text-[var(--text)]">Paste Claude's JSON response:</label>
-                <Textarea
+                <label className="label text-[var(--text)]">Paste Claude&apos;s JSON response:</label>
+                <textarea
                   rows={8}
                   placeholder={'{"word": "example", "definition": "...", ...}'}
                   value={jsonInput}
                   onChange={(e) => setJsonInput(e.target.value)}
-                  className="font-mono text-xs"
+                  className="font-mono text-xs w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
                 />
               </div>
 
@@ -1027,7 +534,7 @@ export default function WordsPage() {
                     {lookingUp ? '…' : '🔍 Look Up'}
                   </Button>
                 </div>
-                <p className="text-[11px] text-[var(--text-secondary)]">Click "Look Up" to auto-fill from dictionary</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">Click &ldquo;Look Up&rdquo; to auto-fill from dictionary</p>
               </div>
               {(
                 [
