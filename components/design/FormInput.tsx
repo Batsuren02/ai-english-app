@@ -114,11 +114,14 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
             <label
               className={cn(
                 'absolute left-4 top-3 origin-left pointer-events-none',
-                'transition-all duration-200 bg-[var(--surface)] px-1',
+                'transition-all duration-200 px-1',
                 focused || hasValue
                   ? 'scale-75 -translate-y-3 text-[var(--accent)]'
                   : 'scale-100 translate-y-0 text-[var(--text-secondary)]'
               )}
+              style={{
+                background: focused || hasValue ? 'var(--surface)' : 'transparent',
+              }}
             >
               {label}
             </label>

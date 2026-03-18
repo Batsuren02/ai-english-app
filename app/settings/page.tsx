@@ -43,9 +43,10 @@ export default function SettingsPage() {
     setLoading(true)
     setError(null)
     try {
+      const clampedMinutes = Math.min(120, Math.max(5, profile.daily_target_minutes ?? 20))
       const { error: updateError } = await supabase
         .from('user_profile')
-        .update({ ...profile, updated_at: new Date().toISOString() })
+        .update({ ...profile, daily_target_minutes: clampedMinutes, updated_at: new Date().toISOString() })
         .eq('id', (profile as any).id)
 
       if (updateError) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase, Word, Review } from '@/lib/supabase'
 import Papa from 'papaparse'
 import { Plus, Search, Download, X, Volume2, Copy, Check, Trash2, Star, Eye, ArrowDownAZ, SortAsc } from 'lucide-react'
@@ -41,7 +41,6 @@ const PAGE_SIZE = 30
 export default function WordsPage() {
   const toast = useToastContext()
   const [words, setWords] = useState<WordWithReview[]>([])
-  const [filtered, setFiltered] = useState<WordWithReview[]>([])
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -79,7 +78,7 @@ export default function WordsPage() {
     loadWords()
   }, [])
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     let f = words
     if (search)
       f = f.filter(
@@ -91,20 +90,16 @@ export default function WordsPage() {
     if (filterLevel !== 'all') f = f.filter((w) => w.cefr_level === filterLevel)
     if (filterMastery !== 'all') f = f.filter((w) => w.masteryLevel === filterMastery)
 
-    // Sort
-    f = [...f].sort((a, b) => {
+    return [...f].sort((a, b) => {
       if (sortBy === 'alpha') return (a.word || '').localeCompare(b.word || '')
       if (sortBy === 'hardest') return (a.review?.ease_factor ?? 2.5) - (b.review?.ease_factor ?? 2.5)
       if (sortBy === 'most_reviewed') return (b.review?.total_reviews ?? 0) - (a.review?.total_reviews ?? 0)
-      // Default 'newest': mastery order (needs_review first), then by created_at
       const masteryOrder = { needs_review: 0, learning: 1, mastered: 2 }
       const orderA = masteryOrder[a.masteryLevel as keyof typeof masteryOrder] ?? 3
       const orderB = masteryOrder[b.masteryLevel as keyof typeof masteryOrder] ?? 3
       if (orderA !== orderB) return orderA - orderB
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
-
-    setFiltered(f)
   }, [words, search, filterCat, filterLevel, filterMastery, sortBy])
 
   function enrichWords(wordsData: Word[], reviewsData: Review[]): WordWithReview[] {
@@ -129,7 +124,6 @@ export default function WordsPage() {
       if (wordsData && reviewsData) {
         const enriched = enrichWords(wordsData, reviewsData)
         setWords(enriched)
-        setFiltered(enriched)
         setOffset(0)
         setHasMore(wordsData.length === PAGE_SIZE)
       }
@@ -167,17 +161,37 @@ export default function WordsPage() {
     setSaving(true)
     try {
       const parsed = JSON.parse(jsonInput)
-      const wordData = Array.isArray(parsed) ? parsed : [parsed]
-      for (const w of wordData) {
+      const wordData: Partial<Word>[] = Array.isArray(parsed) ? parsed : [parsed]
+
+      const invalid = wordData.filter(w => !w.word?.trim() || !w.definition?.trim())
+      if (invalid.length > 0) {
+        toast.error(`${invalid.length} word(s) missing required fields (word, definition)`)
+        setSaving(false)
+        return
+      }
+
+      const existingWords = new Set(words.map(w => w.word.toLowerCase().trim()))
+      const duplicates = wordData.filter(w => existingWords.has(w.word!.toLowerCase().trim()))
+      if (duplicates.length > 0) {
+        toast.warning(`Skipping ${duplicates.length} duplicate(s): ${duplicates.map(w => w.word).join(', ')}`)
+      }
+      const toInsert = wordData.filter(w => !existingWords.has(w.word!.toLowerCase().trim()))
+      if (toInsert.length === 0) {
+        toast.info('All words already exist in your deck')
+        setSaving(false)
+        return
+      }
+
+      for (const w of toInsert) {
         const { data: row } = await supabase.from('words').insert({ ...w }).select().single()
         if (row) await supabase.from('reviews').insert({ word_id: row.id })
       }
-      toast.success('Words imported successfully!')
+      toast.success(`${toInsert.length} word(s) imported successfully!`)
       setJsonInput('')
       setShowAdd(false)
       await loadWords()
     } catch {
-      toast.error('Invalid JSON. Please check the format.')
+      toast.error('Invalid JSON. Please check the format and ensure it is valid JSON.')
     }
     setSaving(false)
   }
@@ -593,8 +607,8 @@ export default function WordsPage() {
             </div>
           ))}
 
-          {/* Load More */}
-          {hasMore && (
+          {/* Load More — only shown when no active filters (filters work on loaded words) */}
+          {hasMore && !search && filterCat === 'all' && filterLevel === 'all' && filterMastery === 'all' && (
             <div className="col-span-full flex justify-center pt-2 pb-2">
               <InteractiveButton
                 variant="secondary"

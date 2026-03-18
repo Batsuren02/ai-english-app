@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { format, addDays, startOfDay, formatDistanceToNow } from 'date-fns'
@@ -25,6 +25,7 @@ export default function StatsPage() {
   const [forecastData, setForecastData] = useState<{ day: string; count: number }[]>([])
   const [avgStudyMinutes, setAvgStudyMinutes] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => { loadStats() }, [])
 
@@ -32,6 +33,7 @@ export default function StatsPage() {
     const todayStart = startOfDay(new Date())
     const next7 = addDays(todayStart, 7)
 
+    try {
     const [logsRes, wordsRes, reviewsRes, profileRes, forecastRes] = await Promise.all([
       supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()),
       supabase.from('words').select('id, cefr_level, category'),
@@ -111,6 +113,10 @@ export default function StatsPage() {
       setWeakWords(reviewsRes.data.filter((r: any) => r.words).map((r: any) => ({ ...r.words, ease_factor: r.ease_factor })))
     }
 
+    } catch (err) {
+      console.error('Failed to load stats:', err)
+      setError('Failed to load statistics. Please refresh the page.')
+    }
     setLoading(false)
   }
 
@@ -120,11 +126,10 @@ export default function StatsPage() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'review-logs.json'; a.click()
   }
 
-  // Calendar rendering: last 16 weeks
-  function renderCalendar() {
+  // Calendar rendering: last 16 weeks (memoized — only recomputes when calendarData changes)
+  const calendarJSX = useMemo(() => {
     const today = new Date()
     const weeks: string[][] = []
-    // Start from 16 weeks ago, align to Sunday
     const start = new Date(today)
     start.setDate(start.getDate() - 112 - start.getDay())
 
@@ -175,13 +180,22 @@ export default function StatsPage() {
         </div>
       </div>
     )
-  }
+  }, [calendarData])
 
   const COLORS = ['#d97706', '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#0891b2']
 
   if (loading) return (
     <div className="flex items-center justify-center h-72">
       <LoadingSpinner size="md" label="Loading your stats..." />
+    </div>
+  )
+
+  if (error) return (
+    <div className="flex flex-col items-center justify-center h-72 gap-4 text-center">
+      <p className="body text-[var(--error)]">{error}</p>
+      <button onClick={() => { setError(null); setLoading(true); loadStats() }} className="text-sm text-[var(--accent)] underline">
+        Try again
+      </button>
     </div>
   )
 
@@ -261,7 +275,7 @@ export default function StatsPage() {
           <Flame size={18} className="text-amber-600" />
           <h3 className="h4 text-[var(--text)]">Review Activity (16 weeks)</h3>
         </div>
-        {renderCalendar()}
+        {calendarJSX}
       </SurfaceCard>
 
       {/* 7-day chart */}

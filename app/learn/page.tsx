@@ -412,7 +412,8 @@ export default function LearnPage() {
     )
   }
 
-  const examples = current.examples as string[] || []
+  if (!current) return null
+  const examples = Array.isArray(current.examples) ? current.examples : []
   const progressPercent = (currentIdx / dueWords.length) * 100
 
   return (
@@ -514,8 +515,8 @@ export default function LearnPage() {
                 }}
               >
                 <div style={{
-                  border: '3px solid #22c55e',
-                  color: '#22c55e',
+                  border: '3px solid var(--success)',
+                  color: 'var(--success)',
                   padding: '4px 14px',
                   borderRadius: '6px',
                   fontWeight: 900,
@@ -524,8 +525,8 @@ export default function LearnPage() {
                   letterSpacing: '2px',
                   textTransform: 'uppercase',
                   lineHeight: 1.2,
-                  textShadow: '0 0 12px rgba(34,197,94,0.4)',
-                  boxShadow: '0 0 0 1px rgba(34,197,94,0.2)',
+                  textShadow: '0 0 12px color-mix(in srgb, var(--success) 40%, transparent)',
+                  boxShadow: '0 0 0 1px color-mix(in srgb, var(--success) 20%, transparent)',
                 }}>
                   GOT IT ✓
                 </div>
@@ -542,8 +543,8 @@ export default function LearnPage() {
                 }}
               >
                 <div style={{
-                  border: '3px solid #ef4444',
-                  color: '#ef4444',
+                  border: '3px solid var(--error)',
+                  color: 'var(--error)',
                   padding: '4px 14px',
                   borderRadius: '6px',
                   fontWeight: 900,
@@ -552,8 +553,8 @@ export default function LearnPage() {
                   letterSpacing: '2px',
                   textTransform: 'uppercase',
                   lineHeight: 1.2,
-                  textShadow: '0 0 12px rgba(239,68,68,0.4)',
-                  boxShadow: '0 0 0 1px rgba(239,68,68,0.2)',
+                  textShadow: '0 0 12px color-mix(in srgb, var(--error) 40%, transparent)',
+                  boxShadow: '0 0 0 1px color-mix(in srgb, var(--error) 20%, transparent)',
                 }}>
                   ✗ NOPE
                 </div>

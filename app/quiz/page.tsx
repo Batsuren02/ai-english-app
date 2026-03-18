@@ -47,6 +47,8 @@ export default function QuizPage() {
     try { return parseInt(localStorage.getItem('quiz_session_length') ?? '10') } catch { return 10 }
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [matchDone, setMatchDone] = useState(false)
   const startTimeRef = useRef(Date.now())
@@ -55,34 +57,40 @@ export default function QuizPage() {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const [wordsRes, reviewsRes, logsRes, profileRes] = await Promise.all([
-      supabase.from('words').select('*'),
-      supabase.from('reviews').select('word_id, ease_factor'),
-      supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-      supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').single(),
-    ])
-    if (wordsRes.data) setWords(wordsRes.data)
-    if (reviewsRes.data) {
-      const em: Record<string, number> = {}
-      reviewsRes.data.forEach((r: any) => em[r.word_id] = r.ease_factor)
-      setEaseMap(em)
-    }
-    if (logsRes.data) {
-      const byType: Record<string, { correct: number; total: number }> = {}
-      logsRes.data.forEach((l: any) => {
-        if (!byType[l.quiz_type]) byType[l.quiz_type] = { correct: 0, total: 0 }
-        byType[l.quiz_type].total++
-        if (l.result >= 3) byType[l.quiz_type].correct++
-      })
-      const wm: Partial<Record<QuizType, number>> = {}
-      for (const [type, { correct, total }] of Object.entries(byType)) {
-        wm[type as QuizType] = total ? Math.round(correct / total * 100) : 50
+    try {
+      const [wordsRes, reviewsRes, logsRes, profileRes] = await Promise.all([
+        supabase.from('words').select('*'),
+        supabase.from('reviews').select('word_id, ease_factor'),
+        supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+        supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').single(),
+      ])
+      if (wordsRes.data) setWords(wordsRes.data)
+      if (reviewsRes.data) {
+        const em: Record<string, number> = {}
+        reviewsRes.data.forEach((r: { word_id: string; ease_factor: number }) => { em[r.word_id] = r.ease_factor })
+        setEaseMap(em)
       }
-      setWeakTypeMap(wm)
-    }
-    if (profileRes.data) {
-      const config = parseInterleaveConfig(profileRes.data)
-      setInterleaveConfig(config)
+      if (logsRes.data) {
+        const byType: Record<string, { correct: number; total: number }> = {}
+        logsRes.data.forEach((l: { quiz_type: string; result: number }) => {
+          if (!byType[l.quiz_type]) byType[l.quiz_type] = { correct: 0, total: 0 }
+          byType[l.quiz_type].total++
+          if (l.result >= 3) byType[l.quiz_type].correct++
+        })
+        const wm: Partial<Record<QuizType, number>> = {}
+        for (const [type, { correct, total }] of Object.entries(byType)) {
+          wm[type as QuizType] = total ? Math.round(correct / total * 100) : 50
+        }
+        setWeakTypeMap(wm)
+      }
+      if (profileRes.data) {
+        const config = parseInterleaveConfig(profileRes.data)
+        setInterleaveConfig(config)
+      }
+    } catch (err) {
+      console.error('Failed to load quiz data:', err)
+      setError('Failed to load quiz data. Please refresh the page.')
+      toast.error('Failed to load quiz data')
     }
     setLoading(false)
   }
@@ -210,6 +218,15 @@ export default function QuizPage() {
     </div>
   )
 
+  if (error) return (
+    <div className="flex flex-col items-center justify-center h-72 gap-4 text-center">
+      <p className="body text-[var(--error)]">{error}</p>
+      <button onClick={() => { setError(null); setLoading(true); loadData() }} className="text-sm text-[var(--accent)] underline">
+        Try again
+      </button>
+    </div>
+  )
+
   // MCQ and Matching need 4+ words; other types work with 1 word
   const needsMoreWords = words.length < 1
 
@@ -239,13 +256,13 @@ export default function QuizPage() {
           <StatCard
             label="Accuracy"
             value={`${accuracy}%`}
-            color={accuracy >= 80 ? 'var(--success)' : accuracy >= 60 ? '#d97706' : 'var(--error)'}
+            color={accuracy >= 80 ? 'var(--success)' : accuracy >= 60 ? 'var(--warning)' : 'var(--error)'}
             trend={{ direction: accuracy >= 60 ? 'up' : 'down', percent: accuracy }}
           />
           <StatCard
             label="Avg Time"
             value={`${avgTime}s`}
-            color="#2563eb"
+            color="var(--accent)"
           />
         </div>
 
@@ -260,14 +277,14 @@ export default function QuizPage() {
                 <div key={type}>
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="label text-[var(--text)]">{meta?.icon} {meta?.label}</span>
-                    <span className="label font-semibold" style={{ color: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626' }}>
+                    <span className="label font-semibold" style={{ color: pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--warning)' : 'var(--error)' }}>
                       {pct}%
                     </span>
                   </div>
                   <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700"
-                      style={{ background: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626', width: `${pct}%` }}
+                      style={{ background: pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--warning)' : 'var(--error)', width: `${pct}%` }}
                     />
                   </div>
                 </div>
@@ -648,8 +665,9 @@ export default function QuizPage() {
           {!feedback && !matchDone && (
             <div className="text-right">
               <button
-                onClick={nextQuiz}
-                className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1"
+                onClick={() => { if (submitting) return; setSubmitting(true); nextQuiz(); setSubmitting(false) }}
+                disabled={submitting}
+                className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <RotateCcw size={11} /> Skip
               </button>
