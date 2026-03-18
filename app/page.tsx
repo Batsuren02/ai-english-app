@@ -12,6 +12,10 @@ import EmptyState from '@/components/design/EmptyState'
 import HeroSection from '@/components/design/HeroSection'
 import { SkeletonStat } from '@/components/design/Skeleton'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import GoalRing from '@/components/design/GoalRing'
+import { AchievementBadge } from '@/components/design/AchievementBadge'
+import { ACHIEVEMENTS, checkAchievements, AchievementStats } from '@/lib/achievements'
+import { useToastContext } from '@/components/ToastProvider'
 
 interface DashboardData {
   profile: UserProfile | null
@@ -21,11 +25,14 @@ interface DashboardData {
   recentActivity: { date: string; count: number }[]
   readingSessions: number
   pronunciationAttempts: number
+  todayReviewCount: number
+  masteredCount: number
+  totalReviews: number
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
   const today = new Date().toISOString().split('T')[0]
-  const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
+  const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes, todayLogsRes, masteredRes, totalReviewsRes] = await Promise.all([
     supabase.from('user_profile').select('*').limit(1).maybeSingle(),
     supabase.from('words').select('id', { count: 'exact', head: true }),
     supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
@@ -33,6 +40,9 @@ async function fetchDashboard(): Promise<DashboardData> {
     supabase.from('review_logs').select('created_at').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
     supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
+    supabase.from('review_logs').select('id', { count: 'exact', head: true }).gte('created_at', today + 'T00:00:00'),
+    supabase.from('reviews').select('id', { count: 'exact', head: true }).gte('repetitions', 3),
+    supabase.from('review_logs').select('id', { count: 'exact', head: true }),
   ])
 
   const weakWords = (weakRes.data ?? [])
@@ -57,12 +67,16 @@ async function fetchDashboard(): Promise<DashboardData> {
     recentActivity,
     readingSessions: readingRes.count ?? 0,
     pronunciationAttempts: pronunciationRes.count ?? 0,
+    todayReviewCount: todayLogsRes.count ?? 0,
+    masteredCount: masteredRes.count ?? 0,
+    totalReviews: totalReviewsRes.count ?? 0,
   }
 }
 
 export default function Dashboard() {
   const { data, loading } = usePageCache<DashboardData>('dashboard', fetchDashboard, 30_000)
   const [streakProtected, setStreakProtected] = useState(false)
+  const toast = useToastContext()
 
   const profile = data?.profile ?? null
   const dueCount = data?.dueCount ?? 0
@@ -71,6 +85,9 @@ export default function Dashboard() {
   const recentActivity = data?.recentActivity ?? []
   const readingSessions = data?.readingSessions ?? 0
   const pronunciationAttempts = data?.pronunciationAttempts ?? 0
+  const todayReviewCount = data?.todayReviewCount ?? 0
+  const masteredCount = data?.masteredCount ?? 0
+  const totalReviews = data?.totalReviews ?? 0
 
   // Streak freeze logic (localStorage side-effect, runs once profile loads)
   useEffect(() => {
@@ -90,6 +107,45 @@ export default function Dashboard() {
       localStorage.setItem('last_activity_date', new Date().toISOString().split('T')[0])
     } catch {}
   }, [profile])
+
+  // Achievement unlock check — runs once per profile load
+  useEffect(() => {
+    if (!profile || !data) return
+    const currentUnlocked: string[] = (profile as any).unlocked_achievements ?? []
+
+    const checkStats = async () => {
+      const [logsRes] = await Promise.all([
+        supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 365 * 86400000).toISOString())
+      ])
+      const logs = logsRes.data ?? []
+      const quizTypes = new Set(logs.map((l: any) => l.quiz_type))
+      const perfectSessions = logs.filter((l: any) => l.result >= 4).length >= (data?.totalReviews ?? 0) * 0.99 ? 1 : 0
+      const writingCount = logs.filter((l: any) => l.quiz_type === 'writing').length
+
+      const stats: AchievementStats = {
+        wordCount: totalWords,
+        totalReviews,
+        streak: profile.current_streak || 0,
+        masteredCount,
+        perfectQuizzes: perfectSessions,
+        quizTypesTried: quizTypes.size,
+        writingCount,
+      }
+
+      const newIds = checkAchievements(stats, currentUnlocked)
+      if (newIds.length === 0) return
+
+      const allUnlocked = [...currentUnlocked, ...newIds]
+      await supabase.from('user_profile').update({ unlocked_achievements: allUnlocked } as any).eq('id', (profile as any).id)
+
+      newIds.forEach(id => {
+        const badge = ACHIEVEMENTS.find(a => a.id === id)
+        if (badge) toast.success(`🏆 Badge unlocked: ${badge.label}!`)
+      })
+    }
+
+    checkStats()
+  }, [profile?.id])
 
   if (loading) return (
     <div className="space-y-6 fade-in">
@@ -182,7 +238,7 @@ export default function Dashboard() {
 
         {/* Due Today — spans 2 cols, primary CTA */}
         <div
-          className={`col-span-2 rounded-2xl border p-5 flex items-end justify-between scale-in stagger-1
+          className={`col-span-2 relative rounded-2xl border p-5 flex items-end justify-between scale-in stagger-1
             ${dueCount > 0 ? 'border-transparent pulse-urgent' : 'border-[var(--border)] bg-[var(--surface)]'}`}
           style={{
             minHeight: 120,
@@ -208,6 +264,11 @@ export default function Dashboard() {
                 Review <ChevronRight size={14} />
               </button>
             </Link>
+          )}
+          {todayReviewCount > 0 && (
+            <div className="absolute top-4 right-4">
+              <GoalRing done={todayReviewCount} total={Math.max(dueCount + todayReviewCount, 1)} size={64} strokeWidth={6} />
+            </div>
           )}
         </div>
 
@@ -328,6 +389,27 @@ export default function Dashboard() {
             ))}
           </div>
         </SurfaceCard>
+      )}
+
+      {/* ── Achievements ── */}
+      {profile && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">Achievements</p>
+            <p className="text-[11px] text-[var(--text-secondary)]">
+              {((profile as any).unlocked_achievements ?? []).length}/{ACHIEVEMENTS.length} unlocked
+            </p>
+          </div>
+          <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
+            {ACHIEVEMENTS.map(achievement => (
+              <AchievementBadge
+                key={achievement.id}
+                achievement={achievement}
+                unlocked={((profile as any).unlocked_achievements ?? []).includes(achievement.id)}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── Empty state ── */}

@@ -1,6 +1,6 @@
 import { Word } from './supabase'
 
-export type QuizType = 'mcq' | 'fill_blank' | 'spelling' | 'matching' | 'sentence' | 'translation'
+export type QuizType = 'mcq' | 'fill_blank' | 'spelling' | 'matching' | 'sentence' | 'translation' | 'listen_and_choose' | 'collocation_match'
 
 export type Quiz = {
   type: QuizType
@@ -82,10 +82,60 @@ export function generateMatching(words: Word[]): Quiz | null {
   return { type: 'matching', word: selected[0], question: 'Match each word to its definition', pairs, answer: 'matching' }
 }
 
+/**
+ * Listen & Choose: TTS plays the definition, user picks the correct word from 4 options.
+ * The question field holds the definition text (spoken by TTS on display).
+ */
+export function generateListenAndChoose(word: Word, allWords: Word[]): Quiz | null {
+  if (!word.definition || allWords.length < 4) return null
+  const wrong = shuffleArray(allWords.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.word)
+  return {
+    type: 'listen_and_choose',
+    word,
+    question: word.definition, // This text is read aloud via TTS
+    options: shuffleArray([word.word, ...wrong]),
+    answer: word.word,
+    hint: word.ipa || undefined,
+  }
+}
+
+// Common distractor verbs for collocation questions
+const COLLOC_DISTRACTORS = ['do', 'make', 'take', 'have', 'get', 'give', 'keep', 'put', 'bring', 'come', 'go', 'hold', 'run', 'set', 'turn']
+
+/**
+ * Collocation Match: fill in the missing collocate in a sentence.
+ * Example: "She will _____ a decision tomorrow." → make
+ * Uses the word's collocations[] array (entries like "make a decision").
+ */
+export function generateCollocationMatch(word: Word): Quiz | null {
+  const collocations = (word.collocations as string[] || []).filter(Boolean)
+  if (!collocations.length) return null
+
+  const colloc = collocations[Math.floor(Math.random() * collocations.length)]
+  const parts = colloc.split(' ')
+  if (parts.length < 2) return null
+
+  const answer = parts[0].toLowerCase() // first word = collocate (usually a verb)
+  const nounPhrase = parts.slice(1).join(' ')
+
+  // Build distractors from common verbs, excluding the correct answer
+  const distractors = shuffleArray(COLLOC_DISTRACTORS.filter(v => v !== answer)).slice(0, 3)
+
+  return {
+    type: 'collocation_match',
+    word,
+    question: `Complete the collocation: "She will _____ ${nounPhrase}."`,
+    options: shuffleArray([answer, ...distractors]),
+    answer,
+    hint: `Word: ${word.word} — ${word.definition}`,
+  }
+}
+
 // Weighted quiz type: boosts types where user is weak
 export function getWeightedQuizType(weakTypes: Partial<Record<QuizType, number>> = {}): QuizType {
   const weights: Record<QuizType, number> = {
     mcq: 25, fill_blank: 20, spelling: 20, matching: 15, translation: 15, sentence: 5,
+    listen_and_choose: 10, collocation_match: 10,
   }
   for (const [type, accuracy] of Object.entries(weakTypes)) {
     const t = type as QuizType

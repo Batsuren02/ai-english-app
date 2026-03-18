@@ -5,12 +5,13 @@ import { supabase, Word, UserProfile } from '@/lib/supabase'
 import {
   generateMCQ, generateFillBlank, generateTranslation,
   generateSpelling, generateSentence, generateMatching,
+  generateListenAndChoose, generateCollocationMatch,
   getWeightedQuizType, pickWeightedWord, shuffleArray,
   Quiz, QuizType
 } from '@/lib/quiz-generator'
 import { pickInterleavedWord, parseInterleaveConfig } from '@/lib/interleaving'
 import { speakWord } from '@/lib/speech-utils'
-import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap } from 'lucide-react'
+import { CheckCircle, XCircle, Volume2, RotateCcw, Award, ChevronRight, Shuffle, Target, Zap, Headphones } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
@@ -21,12 +22,14 @@ import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import { usePageCache } from '@/lib/hooks/usePageCache'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
-  mcq:         { label: 'Multiple Choice', icon: '🔤', desc: 'Choose the correct word from 4 options', color: '#2563eb' },
-  fill_blank:  { label: 'Fill in the Blank', icon: '✏️', desc: 'Complete the sentence with the missing word', color: '#7c3aed' },
-  spelling:    { label: 'Spelling', icon: '🔊', desc: 'Hear the word and spell it correctly', color: '#0891b2' },
-  matching:    { label: 'Matching', icon: '🔗', desc: 'Match 5 words to their definitions', color: '#d97706' },
-  translation: { label: 'Translation', icon: '🌏', desc: 'Translate from Mongolian to English', color: '#16a34a' },
-  sentence:    { label: 'Sentence Writing', icon: '📝', desc: 'Use the word in your own sentence', color: '#dc2626' },
+  mcq:                 { label: 'Multiple Choice',    icon: '🔤', desc: 'Choose the correct word from 4 options',              color: '#2563eb' },
+  fill_blank:          { label: 'Fill in the Blank',  icon: '✏️', desc: 'Complete the sentence with the missing word',         color: '#7c3aed' },
+  spelling:            { label: 'Spelling',           icon: '🔊', desc: 'Hear the word and spell it correctly',                color: '#0891b2' },
+  matching:            { label: 'Matching',           icon: '🔗', desc: 'Match 5 words to their definitions',                  color: '#d97706' },
+  translation:         { label: 'Translation',        icon: '🌏', desc: 'Translate from Mongolian to English',                 color: '#16a34a' },
+  sentence:            { label: 'Sentence Writing',   icon: '📝', desc: 'Use the word in your own sentence',                   color: '#dc2626' },
+  listen_and_choose:   { label: 'Listen & Choose',    icon: '🎧', desc: 'Hear the definition, pick the correct word',          color: '#7c3aed' },
+  collocation_match:   { label: 'Collocation Match',  icon: '🔀', desc: 'Complete the word collocation (e.g. make a decision)', color: '#059669' },
 }
 
 type SessionResult = { word: Word; type: QuizType; correct: boolean; timeMs: number }
@@ -100,6 +103,14 @@ export default function QuizPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Auto-speak definition when listen_and_choose question is shown
+  useEffect(() => {
+    if (quiz?.type === 'listen_and_choose' && quiz.question) {
+      const timer = setTimeout(() => speakWord(quiz.question), 400)
+      return () => clearTimeout(timer)
+    }
+  }, [quiz?.type, quiz?.question])
+
   function buildQuiz(type: QuizType): Quiz | null {
     if (type === 'matching') return generateMatching(words)
     const word = pickInterleavedWord(words, easeMap, recentCategories, interleaveConfig.categoryPenalty)
@@ -113,6 +124,14 @@ export default function QuizPage() {
     if (type === 'translation') return generateTranslation(word)
     if (type === 'spelling') return generateSpelling(word)
     if (type === 'sentence') return generateSentence(word)
+    if (type === 'listen_and_choose') {
+      const q = generateListenAndChoose(word, words)
+      return q || generateMCQ(word, words, true) // fallback to reverse MCQ if not enough words
+    }
+    if (type === 'collocation_match') {
+      const q = generateCollocationMatch(word)
+      return q || generateMCQ(word, words) // fallback to MCQ if no collocations data
+    }
     return null
   }
 
@@ -472,15 +491,35 @@ export default function QuizPage() {
               </div>
             )}
 
-            <h3
-              className="text-[var(--text)] leading-relaxed mb-5"
-              style={{ fontSize: quiz.type === 'matching' ? 17 : 19, fontWeight: 600 }}
-            >
-              {quiz.question}
-            </h3>
+            {/* LISTEN & CHOOSE: auto-plays TTS, replay button */}
+            {quiz.type === 'listen_and_choose' && (
+              <div className="text-center mb-5">
+                <button
+                  onClick={() => speakWord(quiz.question)}
+                  className="w-20 h-20 rounded-full bg-[var(--accent)] text-white border-none cursor-pointer flex items-center justify-center mx-auto mb-2.5 transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Headphones size={30} />
+                </button>
+                <p className="text-[13px] text-[var(--text-secondary)]">Click to hear the definition again, then choose the word</p>
+              </div>
+            )}
+
+            {quiz.type !== 'listen_and_choose' && (
+              <h3
+                className="text-[var(--text)] leading-relaxed mb-5"
+                style={{ fontSize: quiz.type === 'matching' ? 17 : 19, fontWeight: 600 }}
+              >
+                {quiz.question}
+              </h3>
+            )}
+            {quiz.type === 'listen_and_choose' && (
+              <h3 className="text-[var(--text)] leading-relaxed mb-5 text-center" style={{ fontSize: 17, fontWeight: 600 }}>
+                🎧 What word matches this definition?
+              </h3>
+            )}
 
             {/* MCQ */}
-            {quiz.type === 'mcq' && (
+            {(quiz.type === 'mcq' || quiz.type === 'listen_and_choose' || quiz.type === 'collocation_match') && (
               <div className="grid grid-cols-2 gap-2.5">
                 {quiz.options?.map(opt => {
                   const isCorrect = feedback && opt === quiz.answer

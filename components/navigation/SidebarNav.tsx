@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import {
   LayoutDashboard, Brain, BookMarked, BookOpen,
-  Zap, FileText, Mic2, BarChart2, Settings
+  Zap, FileText, Mic2, BarChart2, Settings, PenLine
 } from 'lucide-react'
 
 const MAIN_NAV = [
@@ -20,6 +20,7 @@ const PRACTICE_NAV = [
   { href: '/drills',        label: 'Drills',   icon: Zap      },
   { href: '/reading',       label: 'Reading',  icon: FileText },
   { href: '/pronunciation', label: 'Speaking', icon: Mic2     },
+  { href: '/writing',       label: 'Writing',  icon: PenLine  },
 ]
 
 const BOTTOM_NAV = [

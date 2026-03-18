@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Brain, BookMarked, Zap, BarChart2, BookOpen, FileText, Mic2, X } from 'lucide-react'
+import { LayoutDashboard, Brain, BookMarked, Zap, BarChart2, BookOpen, FileText, Mic2, X, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const PRACTICE_ITEMS = [
@@ -11,6 +11,7 @@ const PRACTICE_ITEMS = [
   { href: '/drills',        label: 'Drills',   icon: Zap,      color: '#d97706' },
   { href: '/reading',       label: 'Reading',  icon: FileText, color: '#7c3aed' },
   { href: '/pronunciation', label: 'Speaking', icon: Mic2,     color: '#0891b2' },
+  { href: '/writing',       label: 'Writing',  icon: PenLine,  color: '#059669' },
 ]
 
 const PRACTICE_PATHS = PRACTICE_ITEMS.map(i => i.href)
