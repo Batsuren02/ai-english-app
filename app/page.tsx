@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word } from '@/lib/supabase'
 import Link from 'next/link'
-import { TrendingUp, AlertTriangle, BookOpen, Mic2, FileText, Zap, ChevronRight, Dumbbell } from 'lucide-react'
+import { TrendingUp, AlertTriangle, BookOpen, Mic2, FileText, Zap, ChevronRight, Dumbbell, Shield } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
+import HeroSection from '@/components/design/HeroSection'
+import { SkeletonStat } from '@/components/design/Skeleton'
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -18,6 +21,7 @@ export default function Dashboard() {
   const [readingSessions, setReadingSessions] = useState(0)
   const [pronunciationAttempts, setPronunciationAttempts] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [streakProtected, setStreakProtected] = useState(false)
 
   useEffect(() => { loadDashboard() }, [])
 
@@ -33,7 +37,26 @@ export default function Dashboard() {
         supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
         supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
       ])
-      if (profileRes.data) setProfile(profileRes.data)
+      if (profileRes.data) {
+        setProfile(profileRes.data)
+        // Streak recovery — 1 free freeze per week (localStorage-based, no migration needed)
+        try {
+          const streak = profileRes.data.current_streak || 0
+          if (streak > 0) {
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+            const weekKey = `streak_freeze_week_${new Date().toISOString().slice(0, 7)}`
+            const usedThisWeek = localStorage.getItem(weekKey) === 'used'
+            const lastActivity = localStorage.getItem('last_activity_date')
+            if (lastActivity && lastActivity < yesterday && !usedThisWeek) {
+              // Missed a day — auto-protect streak if freeze available
+              localStorage.setItem(weekKey, 'used')
+              setStreakProtected(true)
+            }
+          }
+          // Track today's activity date
+          localStorage.setItem('last_activity_date', new Date().toISOString().split('T')[0])
+        } catch {}
+      }
       if (wordsRes.count !== null) setTotalWords(wordsRes.count)
       if (dueRes.count !== null) setDueCount(dueRes.count)
       if (readingRes.count !== null) setReadingSessions(readingRes.count)
@@ -59,8 +82,21 @@ export default function Dashboard() {
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center h-72">
-      <p className="text-[var(--text-secondary)] text-[13px]">Loading your progress…</p>
+    <div className="space-y-6 fade-in">
+      <div className="pb-1 space-y-2">
+        <div className="h-8 w-48 shimmer bg-[var(--border)] rounded-lg" />
+        <div className="h-4 w-64 shimmer bg-[var(--border)] rounded" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="col-span-2 rounded-2xl border border-[var(--border)] p-5 shimmer bg-[var(--border)]" style={{ minHeight: 120 }} />
+        <div className="rounded-2xl border border-[var(--border)] p-5 shimmer bg-[var(--border)]" style={{ minHeight: 120 }} />
+        <div className="rounded-2xl border border-[var(--border)] p-5 shimmer bg-[var(--border)]" style={{ minHeight: 120 }} />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <SkeletonStat />
+        <SkeletonStat />
+        <SkeletonStat />
+      </div>
     </div>
   )
 
@@ -69,39 +105,57 @@ export default function Dashboard() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="fade-in space-y-5">
+    <div className="fade-in space-y-6">
 
-      {/* ── Header ── */}
-      <div className="pb-1">
-        <h1 className="h2 text-[var(--text)]">{greeting}</h1>
-        <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          {dueCount > 0
+      {/* ── Hero Header ── */}
+      <HeroSection
+        greeting={greeting}
+        subtitle={
+          dueCount > 0
             ? `${dueCount} ${dueCount === 1 ? 'word' : 'words'} waiting for review.`
-            : totalWords > 0 ? 'All caught up — great work.' : 'Start adding words to begin.'}
-        </p>
-      </div>
+            : totalWords > 0 ? 'All caught up — great work.' : 'Start adding words to begin.'
+        }
+      />
+
+      {/* ── Streak Protected Banner ── */}
+      {streakProtected && (
+        <div className="scale-in flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--warning)]/40 bg-[color-mix(in_srgb,var(--warning)_8%,transparent)]">
+          <Shield size={18} className="text-[var(--warning)] shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-[var(--text)]">Streak Protected 🛡️</p>
+            <p className="text-xs text-[var(--text-secondary)]">Your freeze was used automatically — 1 available per week.</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Bento Stats Grid ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
         {/* Due Today — spans 2 cols, primary CTA */}
-        <div className={`col-span-2 rounded-2xl border border-[var(--border)] p-5 flex items-end justify-between
-          ${dueCount > 0
-            ? 'bg-[var(--accent)] text-white'
-            : 'bg-[var(--surface)]'}`}
-          style={{ minHeight: 120 }}
+        <div
+          className={`col-span-2 rounded-2xl border p-5 flex items-end justify-between scale-in stagger-1
+            ${dueCount > 0 ? 'border-transparent pulse-urgent' : 'border-[var(--border)] bg-[var(--surface)]'}`}
+          style={{
+            minHeight: 120,
+            ...(dueCount > 0 ? {
+              background: 'linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%)',
+            } : {}),
+          }}
         >
           <div>
             <p className={`text-[11px] font-semibold uppercase tracking-widest mb-1 ${dueCount > 0 ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>
               Due Today
             </p>
-            <div className={`stat-number ${dueCount > 0 ? 'text-white' : 'text-[var(--text)]'}`}>
+            <div
+              className={dueCount > 0 ? 'text-white' : 'text-[var(--text)]'}
+              style={{ fontFamily: 'var(--font-display)', fontSize: '64px', fontWeight: 800, fontStyle: 'italic', lineHeight: 1, letterSpacing: '-0.02em' }}
+            >
               {dueCount}
             </div>
           </div>
           {dueCount > 0 && (
             <Link href="/learn">
-              <button className="bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-xl px-4 py-2 text-[13px] font-semibold transition-all flex items-center gap-1.5">
+              <button className="bg-white text-[var(--accent)] rounded-xl px-4 py-2 text-[13px] font-semibold transition-all hover:opacity-90 flex items-center gap-1.5">
                 Review <ChevronRight size={14} />
               </button>
             </Link>
@@ -109,13 +163,13 @@ export default function Dashboard() {
         </div>
 
         {/* Total Words */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5" style={{ minHeight: 120 }}>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 scale-in stagger-2" style={{ minHeight: 120 }}>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-1">Words</p>
           <div className="stat-number text-[var(--text)]">{totalWords}</div>
         </div>
 
         {/* Streak */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5" style={{ minHeight: 120 }}>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 scale-in stagger-3" style={{ minHeight: 120 }}>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-1">Streak</p>
           <div className="stat-number text-[var(--text)]">
             {streak}<span className="text-[18px] font-normal ml-1 text-[var(--text-secondary)]">d</span>
@@ -131,16 +185,18 @@ export default function Dashboard() {
         <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-3">Practice</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {[
-            { href: '/quiz',          icon: BookOpen, label: 'Quiz',          sub: '6 types'         },
-            { href: '/reading',       icon: FileText, label: 'Reading',       sub: 'Learn from text' },
-            { href: '/pronunciation', icon: Mic2,     label: 'Speak',         sub: 'Pronunciation'   },
-            { href: '/drills',        icon: Zap,      label: 'Drills',        sub: 'Quick practice'  },
-          ].map(({ href, icon: Icon, label, sub }) => (
+            { href: '/quiz',          icon: BookOpen, label: 'Quiz',          sub: '6 types',        color: '#2563eb' },
+            { href: '/reading',       icon: FileText, label: 'Reading',       sub: 'Learn from text', color: '#7c3aed' },
+            { href: '/pronunciation', icon: Mic2,     label: 'Speak',         sub: 'Pronunciation',  color: '#0891b2' },
+            { href: '/drills',        icon: Zap,      label: 'Drills',        sub: 'Quick practice', color: '#d97706' },
+          ].map(({ href, icon: Icon, label, sub, color }) => (
             <Link key={href} href={href} className="no-underline">
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 flex items-center gap-3
-                hover:border-[var(--accent)]/40 hover:shadow-sm transition-all cursor-pointer group">
-                <div className="w-8 h-8 rounded-lg bg-[var(--bg)] flex items-center justify-center flex-shrink-0 group-hover:bg-[var(--accent)]/10 transition-colors">
-                  <Icon size={15} className="text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
+                hover:shadow-sm transition-all cursor-pointer border-l-4"
+                style={{ borderLeftColor: color }}
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
+                  <Icon size={15} style={{ color }} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-[var(--text)] leading-tight">{label}</p>
@@ -163,22 +219,22 @@ export default function Dashboard() {
             {recentActivity.reduce((s, r) => s + r.count, 0)} reviews total
           </span>
         </div>
-        <div className="flex gap-2 items-end h-20">
-          {recentActivity.map(({ date, count }) => {
-            const maxC = Math.max(...recentActivity.map(r => r.count), 1)
-            const h = count ? Math.max((count / maxC) * 68, 6) : 3
-            return (
-              <div key={date} className="flex-1 flex flex-col items-center gap-1.5">
-                <div
-                  className="w-full rounded-sm transition-all duration-500"
-                  style={{ height: `${h}px`, background: count ? 'var(--accent)' : 'var(--border)', opacity: count ? 1 : 0.5 }}
-                  title={`${count} reviews`}
-                />
-                <span className="text-[10px] text-[var(--text-secondary)]">{date}</span>
-              </div>
-            )
-          })}
-        </div>
+        <ResponsiveContainer width="100%" height={80}>
+          <AreaChart data={recentActivity} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="activityGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <Area type="monotone" dataKey="count" stroke="var(--accent)" fill="url(#activityGrad)" strokeWidth={2} dot={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+            <Tooltip
+              contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', fontSize: 12 }}
+              formatter={(v: any) => [v, 'Reviews']}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </SurfaceCard>
 
       {/* ── Secondary Stats ── */}

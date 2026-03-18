@@ -67,7 +67,8 @@
       "Bash(npm ls:*)",
       "Bash(npm install:*)",
       "Bash(xargs wc:*)",
-      "Bash(find C:UsersbatsuOneDriveDesktopProjectsai-english-app -name *.env* -type f)"
+      "Bash(find C:UsersbatsuOneDriveDesktopProjectsai-english-app -name *.env* -type f)",
+      "Bash(grep -E \"\\\\.tsx$\")"
     ]
   }
 }

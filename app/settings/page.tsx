@@ -219,14 +219,6 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          <InteractiveButton
-            variant="primary"
-            size="md"
-            onClick={save}
-            isLoading={loading}
-          >
-            {saved ? <><Check size={15} className="inline mr-1.5" />Saved!</> : <><Save size={15} className="inline mr-1.5" />Save Settings</>}
-          </InteractiveButton>
         </div>
       </SurfaceCard>
 
@@ -283,19 +275,25 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <InteractiveButton
-            variant="primary"
-            size="md"
-            onClick={save}
-            isLoading={loading}
-          >
-            {saved ? <><Check size={15} className="inline mr-1.5" />Saved!</> : <><Save size={15} className="inline mr-1.5" />Save Settings</>}
-          </InteractiveButton>
         </div>
       </SurfaceCard>
 
       {/* Notifications Settings */}
       <NotificationSettings />
+
+      {/* Unified sticky save bar */}
+      <div className="sticky bottom-0 bg-[var(--bg)]/90 border-t border-[var(--border)] py-4 -mx-5 px-5"
+        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+        <InteractiveButton
+          variant="primary"
+          size="lg"
+          onClick={save}
+          isLoading={loading}
+          className="w-full"
+        >
+          {saved ? <><Check size={15} className="inline mr-1.5" />Saved!</> : <><Save size={15} className="inline mr-1.5" />Save All Settings</>}
+        </InteractiveButton>
+      </div>
 
       {/* Claude Prompts */}
       <SurfaceCard padding="lg">

@@ -67,6 +67,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.style.setProperty('--error', theme.colors.error)
     root.style.setProperty('--warning', theme.colors.warning)
     root.style.setProperty('--shadow', theme.colors.shadow)
+    // V3.0 glass surfaces
+    root.style.setProperty('--surface-glass', theme.colors.surfaceGlass || 'rgba(255,255,255,0.72)')
+    root.style.setProperty('--surface-elevated', theme.colors.surfaceElevated || theme.colors.surface)
   }
 
   // Handle theme change

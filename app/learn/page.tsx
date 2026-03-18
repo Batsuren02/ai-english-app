@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { supabase, Word, Review, UserProfile } from '@/lib/supabase'
 import { calculateSM2 } from '@/lib/srs'
 import { speakWord } from '@/lib/speech-utils'
@@ -12,6 +13,8 @@ import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
+import CelebrationBanner from '@/components/design/CelebrationBanner'
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import { useToastContext } from '@/components/ToastProvider'
 
 type WordWithReview = Word & { review: Review; isNew?: boolean }
@@ -43,6 +46,8 @@ export default function LearnPage() {
 
   // Mongolian hint preference
   const [showMongolianHint, setShowMongolianHint] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showSpaceHint, setShowSpaceHint] = useState(true)
 
   const startTimeRef = useRef(Date.now())
   const swipeStartX = useRef<number | null>(null)
@@ -53,12 +58,15 @@ export default function LearnPage() {
   useEffect(() => {
     loadDueWords()
     try { setShowMongolianHint(localStorage.getItem('showMongolianHint') === 'true') } catch {}
+    const t = setTimeout(() => setShowSpaceHint(false), 3000)
+    return () => clearTimeout(t)
   }, [])
 
   // Keyboard shortcuts: Space/Enter to flip, 1-4 to rate
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s); return }
       if (!dueWords[currentIdx] || sessionDone) return
 
       if (!showDetails) {
@@ -179,6 +187,9 @@ export default function LearnPage() {
     })
 
     setResults(prev => [...prev, { word: current, quality, correct: quality >= 3 }])
+
+    // XP toast
+    if (quality >= 3) toast.success('+10 XP')
 
     // Show undo pill for 5 seconds
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
@@ -357,9 +368,15 @@ export default function LearnPage() {
     const correct = results.filter(r => r.correct).length
     const accuracy = Math.round(correct / results.length * 100)
     return (
-      <div className="fade-in max-w-2xl mx-auto space-y-6">
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="max-w-2xl mx-auto space-y-6 relative"
+      >
+        <CelebrationBanner active />
+        <div className="text-center scale-in">
+          <div className="flex justify-center mb-4 bounce-in">
             <Award size={64} className="text-[var(--accent)]" />
           </div>
           <h1 className="h2 text-[var(--text)] mb-2">Session Complete! 🎉</h1>
@@ -408,7 +425,7 @@ export default function LearnPage() {
             Start New Session
           </InteractiveButton>
         </div>
-      </div>
+      </motion.div>
     )
   }
 
@@ -433,18 +450,12 @@ export default function LearnPage() {
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <span className="label text-[var(--text-secondary)]">Progress</span>
-          <span className="h4 text-[var(--accent)]">{currentIdx + 1}/{dueWords.length}</span>
-        </div>
-        <div className="w-full h-3 bg-[var(--border)] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/50 rounded-full"
-            style={{ width: `${progressPercent}%`, transition: 'width 800ms cubic-bezier(0.4, 0, 0.2, 1)' }}
-          />
-        </div>
+      {/* Progress Bar — slim 3px */}
+      <div className="w-full h-[3px] bg-[var(--border)] rounded-full overflow-hidden">
+        <div
+          style={{ width: `${progressPercent}%`, background: 'var(--accent)', transition: 'width 600ms cubic-bezier(0.4,0,0.2,1)' }}
+          className="h-full rounded-full"
+        />
       </div>
 
       {/* Swipeable Word Card */}
@@ -457,8 +468,11 @@ export default function LearnPage() {
         onMouseMove={handleCardMove}
         onMouseUp={handleCardUp}
         onMouseLeave={handleCardLeave}
-        className="relative w-full h-[500px] cursor-grab active:cursor-grabbing rounded-2xl select-none"
+        className="relative w-full cursor-grab active:cursor-grabbing rounded-2xl select-none"
         style={{
+          height: 'calc(100svh - 220px)',
+          maxHeight: '560px',
+          minHeight: '380px',
           perspective: '1000px',
           touchAction: 'none',
           userSelect: 'none',
@@ -635,9 +649,17 @@ export default function LearnPage() {
                 <p className="label text-[var(--text-secondary)] text-center text-sm cursor-pointer hover:text-[var(--accent)] transition-colors">
                   Tap card to flip
                 </p>
-                <p className="hidden md:block text-xs text-center text-[var(--text-secondary)] opacity-40 mt-1">
-                  Space to flip
-                </p>
+
+                {/* Space to flip hint pill — desktop only, auto-dismiss after 3s */}
+                {showSpaceHint && (
+                  <div
+                    className="hidden md:flex items-center gap-1.5 mx-auto w-fit px-3 py-1.5 glass rounded-full"
+                    style={{ animation: 'fadeOut 300ms ease 2700ms forwards' }}
+                  >
+                    <kbd className="text-[10px] font-semibold text-[var(--text-secondary)] bg-[var(--border)] px-1.5 py-0.5 rounded">Space</kbd>
+                    <span className="text-[10px] text-[var(--text-secondary)]">to flip</span>
+                  </div>
+                )}
               </div>
             </SurfaceCard>
           </div>
@@ -694,14 +716,15 @@ export default function LearnPage() {
                     { label: 'Hard',  q: 2, color: '#f97316', bg: 'rgba(249,115,22,0.1)', hover: 'rgba(249,115,22,0.2)' },
                     { label: 'Good',  q: 3, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', hover: 'rgba(59,130,246,0.2)' },
                     { label: 'Easy',  q: 5, color: '#22c55e', bg: 'rgba(34,197,94,0.1)',  hover: 'rgba(34,197,94,0.2)' },
-                  ].map(({ label, q, color, bg }) => (
+                  ].map(({ label, q, color, bg }, i) => (
                     <button
                       key={q}
                       onClick={() => rateWithQuality(q)}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95 hover:opacity-90"
+                      className="flex-1 py-3 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95 hover:opacity-90 flex flex-col items-center gap-0.5"
                       style={{ background: bg, color, border: `1.5px solid ${color}40` }}
                     >
                       {label}
+                      <span className="text-[9px] opacity-50 hidden md:block">[{i + 1}]</span>
                     </button>
                   ))}
                 </div>
@@ -784,6 +807,8 @@ export default function LearnPage() {
           </button>
         </div>
       )}
+
+      <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} page="learn" />
     </div>
   )
 }

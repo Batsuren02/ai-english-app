@@ -11,6 +11,7 @@ import { speakWord } from '@/lib/speech-utils'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
+import { SkeletonWordCard } from '@/components/design/Skeleton'
 
 // shadcn components
 import { Button } from '@/components/ui/button'
@@ -377,7 +378,22 @@ export default function WordsPage() {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
-    return <EmptyState icon="📚" title="Loading your library…" description="Fetching vocabulary from Supabase" />
+    return (
+      <div className="fade-in max-w-7xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-36 shimmer bg-[var(--border)] rounded-lg" />
+            <div className="h-4 w-52 shimmer bg-[var(--border)] rounded" />
+          </div>
+          <div className="h-9 w-28 shimmer bg-[var(--border)] rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonWordCard key={i} className={`stagger-${Math.min(i + 1, 6) as 1 | 2 | 3 | 4 | 5 | 6}`} />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -413,81 +429,89 @@ export default function WordsPage() {
         </div>
       </div>
 
-      {/* ── Filters & Search ─────────────────────────────────────────────────── */}
-      <SurfaceCard padding="md" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
-        <div className="space-y-4">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
-            <Input
-              placeholder="Search words or definitions…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Filter row */}
-          <div className="flex flex-wrap gap-3">
-            {/* Mastery filter */}
-            <Select value={filterMastery} onValueChange={setFilterMastery}>
-              <SelectTrigger className="w-auto min-w-[160px]">
-                <SelectValue placeholder="All Mastery" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Words</SelectItem>
-                <SelectItem value="needs_review">Needs Review</SelectItem>
-                <SelectItem value="learning">Learning</SelectItem>
-                <SelectItem value="mastered">Mastered</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Category filter */}
-            <Select value={filterCat} onValueChange={setFilterCat}>
-              <SelectTrigger className="w-auto min-w-[150px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c.replace('_', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Level filter */}
-            <Select value={filterLevel} onValueChange={setFilterLevel}>
-              <SelectTrigger className="w-auto min-w-[130px]">
-                <SelectValue placeholder="All Levels" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                {LEVELS.map((l) => (
-                  <SelectItem key={l} value={l}>
-                    {l}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
-              <SelectTrigger className="w-auto min-w-[150px]">
-                <SortAsc size={13} className="mr-1.5 text-[var(--text-secondary)]" />
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Needs Review First</SelectItem>
-                <SelectItem value="alpha">A → Z</SelectItem>
-                <SelectItem value="hardest">Hardest First</SelectItem>
-                <SelectItem value="most_reviewed">Most Reviewed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      {/* ── Sticky Search + Filters ──────────────────────────────────────────── */}
+      <div className="sticky top-[40px] z-10 bg-[var(--bg)] py-2 space-y-3">
+        {/* Search bar */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
+          <Input
+            placeholder="Search words or definitions…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
         </div>
-      </SurfaceCard>
+
+        {/* Mastery pills */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {[
+            { value: 'all', label: 'All' },
+            { value: 'needs_review', label: 'Needs Review' },
+            { value: 'learning', label: 'Learning' },
+            { value: 'mastered', label: 'Mastered' },
+          ].map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setFilterMastery(value)}
+              className={cn(
+                'whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0',
+                filterMastery === value
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--accent)]/40'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Other filters row */}
+        <div className="flex flex-wrap gap-2">
+          {/* Category filter */}
+          <Select value={filterCat} onValueChange={setFilterCat}>
+            <SelectTrigger className="w-auto min-w-[150px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c.replace('_', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Level filter */}
+          <Select value={filterLevel} onValueChange={setFilterLevel}>
+            <SelectTrigger className="w-auto min-w-[130px]">
+              <SelectValue placeholder="All Levels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Levels</SelectItem>
+              {LEVELS.map((l) => (
+                <SelectItem key={l} value={l}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Sort */}
+          <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-auto min-w-[150px]">
+              <SortAsc size={13} className="mr-1.5 text-[var(--text-secondary)]" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Needs Review First</SelectItem>
+              <SelectItem value="alpha">A → Z</SelectItem>
+              <SelectItem value="hardest">Hardest First</SelectItem>
+              <SelectItem value="most_reviewed">Most Reviewed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* ── Word Grid (Card-based layout) ────────────────────────────────────── */}
       {filtered.length === 0 ? (
@@ -629,13 +653,13 @@ export default function WordsPage() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm backdrop-enter"
             onClick={() => { setShowDetails(false); setEditMode(false) }}
           />
 
           {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="w-full max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto bg-[var(--bg-card)] rounded-xl shadow-2xl animate-in overflow-hidden border border-[var(--border)]">
+            <div className="modal-enter w-full max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto bg-[var(--bg-card)] rounded-xl overflow-hidden border border-[var(--border)]" style={{ boxShadow: 'var(--shadow-2xl)' }}>
               {/* Modal header */}
               <div className="flex items-start justify-between gap-4 p-6 border-b border-[var(--border)] flex-shrink-0">
                 <div className="flex-1 min-w-0">
@@ -699,6 +723,15 @@ export default function WordsPage() {
                           <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace('_', ' ')}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="label text-[var(--text)]">Personal Notes</label>
+                      <Textarea
+                        placeholder="Mnemonics, memory tricks, context, example sentences…"
+                        rows={3}
+                        value={(editForm as any).notes || ''}
+                        onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                      />
                     </div>
                   </div>
                 )}
@@ -812,6 +845,16 @@ export default function WordsPage() {
                       </p>
                     </div>
                   )}
+
+                  {/* Personal notes */}
+                  {selectedWord.notes && (
+                    <div>
+                      <p className="label text-[var(--text-secondary)] mb-2 uppercase tracking-wide">My Notes</p>
+                      <blockquote className="text-sm text-[var(--text)] px-3 py-2 bg-[var(--bg)] rounded border-l-2 border-[var(--accent)]/50 italic leading-relaxed">
+                        {selectedWord.notes}
+                      </blockquote>
+                    </div>
+                  )}
                 </div>}
               </div>
 
@@ -853,6 +896,7 @@ export default function WordsPage() {
                           part_of_speech: selectedWord.part_of_speech || '',
                           cefr_level: selectedWord.cefr_level || 'B1',
                           category: selectedWord.category || 'daily',
+                          notes: selectedWord.notes || '',
                         })
                         setEditMode(true)
                       }}

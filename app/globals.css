@@ -35,6 +35,11 @@
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
+
+  /* Opacity */
+  --opacity-hover: 0.85;
+  --opacity-disabled: 0.45;
 
   /* ─── V2.0: Typography Scale ─── */
   --text-h1: 40px;
@@ -79,7 +84,17 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
   --radius-full: 9999px;
+
+  /* ─── V3.0: Glass & Elevated Surfaces ─── */
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-elevated: #ffffff;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+
+  /* ─── V3.0: Glow Effect ─── */
+  --glow-accent: 0 0 0 1px var(--accent), 0 0 20px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 /* Dark Theme */
@@ -99,6 +114,10 @@
   --error: #f87171;
   --warning: #fbbf24;
   --shadow: rgba(0, 0, 0, 0.5);
+  /* V3.0 dark overrides */
+  --surface-glass: rgba(31, 29, 25, 0.82);
+  --surface-elevated: #252319;
+  --border-subtle: rgba(255, 255, 255, 0.06);
 }
 
 /* High Contrast Accessibility Theme (WCAG AAA - 7:1 ratio) */
@@ -518,13 +537,76 @@ h1, h2, h3, h4 {
 .float-up { animation: floatUp 1s ease-out forwards; }
 
 /* ─── V2.0: Animation Utilities ─── */
-.scale-in { animation: scaleIn 0.3s ease-out; }
+.scale-in { animation: scaleIn 0.3s ease-out both; }
 .scale-pop { animation: scalePop 0.4s ease-in-out; }
 .bounce { animation: bounce 0.6s ease-in-out; }
 .bounce-in { animation: bounceIn 0.5s ease-out; }
 .glow { animation: glow 2s ease-in-out infinite; }
 .slide-reveal { animation: slideReveal 0.3s ease-out; }
 .expand-height { animation: expandHeight 0.3s ease-out; }
+
+/* ─── Stagger Delays (combine with scale-in / fade-in) ─── */
+.stagger-1 { animation-delay: 60ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 180ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 300ms; }
+.stagger-6 { animation-delay: 360ms; }
+
+/* ─── Modal Entrance ─── */
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-enter   { animation: modalIn    200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.backdrop-enter { animation: backdropIn 180ms ease both; }
+
+/* ─── Shake (wrong answer) ─── */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-6px); }
+  40%     { transform: translateX(6px); }
+  60%     { transform: translateX(-4px); }
+  80%     { transform: translateX(4px); }
+}
+.shake { animation: shake 400ms ease; }
+
+/* ─── Confetti fly (celebration) ─── */
+@keyframes confettiFly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx, 0px), var(--ty, -80px)) scale(0.4) rotate(360deg); opacity: 0; }
+}
+
+/* ─── XP float up ─── */
+@keyframes xpFloat {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  60%  { opacity: 1; transform: translateY(-28px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
+}
+.xp-float { animation: xpFloat 1.2s ease-out forwards; }
+
+/* ─── V3.0: Animated gradient (dashboard hero) ─── */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ─── V3.0: Urgent pulse (due today card) ─── */
+@keyframes gentlePulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+.pulse-urgent { animation: gentlePulse 2s ease-in-out infinite; }
+
+/* ─── V3.0: Fade out (space hint pill) ─── */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; pointer-events: none; }
+}
 
 /* ─── V2.0: Enhanced Shadow Utilities ─── */
 .shadow-xs { box-shadow: var(--shadow-xs); }
@@ -546,6 +628,21 @@ h1, h2, h3, h4 {
 .rounded-lg { border-radius: var(--radius-lg); }
 .rounded-xl { border-radius: var(--radius-xl); }
 .rounded-full { border-radius: var(--radius-full); }
+
+/* ─── V3.0: Glass & Elevation Utilities ─── */
+.glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid var(--border-subtle);
+}
+.surface-elevated {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+}
+.glow-accent-hover:hover { box-shadow: var(--glow-accent); }
+.rounded-2xl { border-radius: var(--radius-2xl); }
+.rounded-3xl { border-radius: var(--radius-3xl); }
 
 /* Smooth Color Transitions are already handled in the * rule above */
 

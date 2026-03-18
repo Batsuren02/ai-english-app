@@ -17,6 +17,7 @@ import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
 import { useToastContext } from '@/components/ToastProvider'
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
   mcq:         { label: 'Multiple Choice', icon: '🔤', desc: 'Choose the correct word from 4 options', color: '#2563eb' },
@@ -49,12 +50,22 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [matchDone, setMatchDone] = useState(false)
   const startTimeRef = useRef(Date.now())
   const toast = useToastContext()
 
   useEffect(() => { loadData() }, [])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   async function loadData() {
     try {
@@ -164,6 +175,7 @@ export default function QuizPage() {
     setScore(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
     setResults(prev => [...prev, { word: quiz!.word, type, correct, timeMs }])
     supabase.from('review_logs').insert({ word_id: quiz!.word.id, quiz_type: type, result: correct ? 4 : 0, response_time_ms: timeMs, user_answer: answer, source: 'quiz' })
+    if (correct) toast.success('+15 XP')
   }
 
   function checkTextAnswer() {
@@ -337,19 +349,20 @@ export default function QuizPage() {
         hover
         gradient
         elevation="md"
-        className="bg-gradient-to-br from-amber-600 to-amber-700 text-white cursor-pointer"
+        className="scale-in cursor-pointer"
+        style={{ background: 'var(--gradient-accent-bold)', color: 'white' }}
         onClick={() => startMode('auto')}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <Shuffle size={20} />
+              <Shuffle size={20} className="text-white" />
               <h3 className="h4 text-white">Smart Mix</h3>
               <span className="badge bg-white/25 text-white text-xs font-semibold px-2 py-1">RECOMMENDED</span>
             </div>
-            <p className="text-sm opacity-90">Auto-weighted: focuses on your weakest areas and challenging words</p>
+            <p className="text-sm text-white/90">Auto-weighted: focuses on your weakest areas and challenging words</p>
           </div>
-          <ChevronRight size={24} />
+          <ChevronRight size={24} className="text-white" />
         </div>
       </SurfaceCard>
 
@@ -363,16 +376,17 @@ export default function QuizPage() {
         </div>
       )}
       {!needsMoreWords && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.entries(QUIZ_META).map(([type, { label, icon, desc, color }]) => {
+        {Object.entries(QUIZ_META).map(([type, { label, icon, desc, color }], idx) => {
           const accuracy = weakTypeMap[type as QuizType]
           const requiresFour = type === 'mcq' || type === 'matching'
           const disabled = requiresFour && words.length < 4
+          const stagger = `stagger-${Math.min(idx + 1, 6)}` as string
           return (
             <SurfaceCard
               key={type}
               hover={!disabled}
               elevation="sm"
-              className={disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer transition-transform'}
+              className={`scale-in ${stagger} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer transition-transform'}`}
               onClick={() => { if (!disabled) startMode(type as QuizType) }}
             >
               <div className="space-y-3">
@@ -381,20 +395,20 @@ export default function QuizPage() {
                   <h3 className="h4 text-[var(--text)]" style={{ color }}>{label}</h3>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">{desc}</p>
-                {disabled && <p className="text-xs font-semibold text-amber-600">⚠ Needs 4+ words</p>}
+                {disabled && <p className="text-xs font-semibold text-[var(--warning)]">⚠ Needs 4+ words</p>}
 
                 {accuracy !== undefined && (
                   <div className="pt-2 border-t border-[var(--border)]">
                     <div className="flex justify-between items-center mb-2">
                       <span className="label text-[var(--text-secondary)]">Your accuracy</span>
-                      <span className="label font-semibold" style={{ color: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626' }}>
+                      <span className="label font-semibold" style={{ color: accuracy >= 80 ? 'var(--success)' : accuracy >= 60 ? 'var(--warning)' : 'var(--error)' }}>
                         {accuracy}%
                       </span>
                     </div>
                     <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-500"
-                        style={{ background: accuracy >= 80 ? '#16a34a' : accuracy >= 60 ? '#d97706' : '#dc2626', width: `${accuracy}%` }}
+                        style={{ background: accuracy >= 80 ? 'var(--success)' : accuracy >= 60 ? 'var(--warning)' : 'var(--error)', width: `${accuracy}%` }}
                       />
                     </div>
                   </div>
@@ -488,9 +502,9 @@ export default function QuizPage() {
                       className={cn(
                         'p-3.5 rounded-xl border-2 text-left text-[13px] font-semibold transition-all duration-150 leading-snug',
                         isCorrect
-                          ? 'bg-green-50 dark:bg-green-950/30 border-green-500 text-green-700 dark:text-green-400'
+                          ? 'correct-flash border-[var(--success)] text-[var(--success)] bg-[color-mix(in_srgb,var(--success)_10%,transparent)]'
                           : isWrong
-                          ? 'bg-red-50 dark:bg-red-950/30 border-red-500 text-red-700 dark:text-red-400'
+                          ? 'shake border-[var(--error)] text-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)]'
                           : feedback
                           ? 'border-[var(--border)] text-[var(--text-secondary)] opacity-60'
                           : 'border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--surface-hover)] cursor-pointer'
@@ -675,6 +689,8 @@ export default function QuizPage() {
           )}
         </>
       )}
+
+      <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} page="quiz" />
     </div>
   )
 }

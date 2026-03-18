@@ -147,21 +147,27 @@ export default function StatsPage() {
 
     return (
       <div className="overflow-x-auto">
-        <div className="flex gap-1" style={{ minWidth: 'max-content' }}>
+        <div className="flex gap-1.5" style={{ minWidth: 'max-content' }}>
           {weeks.map((week, wi) => (
-            <div key={wi} className="flex flex-col gap-1">
+            <div key={wi} className="flex flex-col gap-1.5">
               {week.map(date => {
                 const count = calendarData[date] || 0
                 const intensity = count === 0 ? 0 : Math.min(4, Math.ceil(count / maxCount * 4))
-                const colors = ['var(--border)', '#bbf7d0', '#4ade80', '#16a34a', '#14532d']
+                        const colors = [
+                  'var(--border)',
+                  'color-mix(in srgb, var(--success) 20%, transparent)',
+                  'color-mix(in srgb, var(--success) 45%, transparent)',
+                  'color-mix(in srgb, var(--success) 70%, transparent)',
+                  'var(--success)',
+                ]
                 return (
                   <div
                     key={date}
                     title={`${date}: ${count} reviews`}
                     className="rounded transition-all"
                     style={{
-                      width: 13,
-                      height: 13,
+                      width: 16,
+                      height: 16,
                       borderRadius: '3px',
                       background: colors[intensity],
                     }}
@@ -173,8 +179,14 @@ export default function StatsPage() {
         </div>
         <div className="flex items-center gap-2 mt-4 text-xs text-[var(--text-secondary)]">
           <span>Less</span>
-          {['var(--border)', '#bbf7d0', '#4ade80', '#16a34a', '#14532d'].map((c, i) => (
-            <div key={i} style={{ width: 11, height: 11, borderRadius: '2px', background: c }} />
+          {[
+            'var(--border)',
+            'color-mix(in srgb, var(--success) 20%, transparent)',
+            'color-mix(in srgb, var(--success) 45%, transparent)',
+            'color-mix(in srgb, var(--success) 70%, transparent)',
+            'var(--success)',
+          ].map((c, i) => (
+            <div key={i} style={{ width: 14, height: 14, borderRadius: '2px', background: c }} />
           ))}
           <span>More</span>
         </div>
@@ -231,7 +243,7 @@ export default function StatsPage() {
       </div>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           icon={<BookMarked size={28} className="text-blue-500" />}
           label="Total Words"

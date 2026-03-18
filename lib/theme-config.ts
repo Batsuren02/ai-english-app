@@ -37,6 +37,10 @@ export interface Theme {
 
     // Shadows
     shadow: string
+
+    // V3.0: Glass & elevated surfaces
+    surfaceGlass?: string
+    surfaceElevated?: string
   }
 }
 
@@ -82,6 +86,8 @@ const themes: Record<ThemeName, Theme> = {
       error: '#f87171',
       warning: '#fbbf24',
       shadow: 'rgba(0, 0, 0, 0.5)',
+      surfaceGlass: 'rgba(36, 32, 25, 0.82)',
+      surfaceElevated: '#2d2a22',
     },
   },
 
@@ -104,6 +110,8 @@ const themes: Record<ThemeName, Theme> = {
       error: '#ed8796',
       warning: '#eed49f',
       shadow: 'rgba(0, 0, 20, 0.6)',
+      surfaceGlass: 'rgba(30, 40, 73, 0.82)',
+      surfaceElevated: '#253260',
     },
   },
 
@@ -126,6 +134,8 @@ const themes: Record<ThemeName, Theme> = {
       error: '#ff3d71',
       warning: '#fcd34d',
       shadow: 'rgba(0, 0, 10, 0.7)',
+      surfaceGlass: 'rgba(26, 17, 48, 0.85)',
+      surfaceElevated: '#221443',
     },
   },
 
@@ -148,6 +158,8 @@ const themes: Record<ThemeName, Theme> = {
       error: '#fb7185',
       warning: '#fbbf24',
       shadow: 'rgba(0, 20, 35, 0.6)',
+      surfaceGlass: 'rgba(20, 64, 90, 0.82)',
+      surfaceElevated: '#1a5070',
     },
   },
 
@@ -170,6 +182,8 @@ const themes: Record<ThemeName, Theme> = {
       error: '#f38ba8',
       warning: '#fab387',
       shadow: 'rgba(0, 0, 0, 0.5)',
+      surfaceGlass: 'rgba(49, 50, 68, 0.82)',
+      surfaceElevated: '#45475a',
     },
   },
 
@@ -192,6 +206,8 @@ const themes: Record<ThemeName, Theme> = {
       error: '#eb6f92',
       warning: '#f6c177',
       shadow: 'rgba(0, 0, 0, 0.5)',
+      surfaceGlass: 'rgba(38, 35, 58, 0.82)',
+      surfaceElevated: '#403d52',
     },
   },
 }
