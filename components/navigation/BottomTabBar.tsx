@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LayoutDashboard, Brain, BookMarked, Zap, BarChart2, BookOpen, FileText, Mic2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +18,10 @@ const PRACTICE_PATHS = PRACTICE_ITEMS.map(i => i.href)
 export default function BottomTabBar() {
   const pathname = usePathname()
   const [practiceOpen, setPracticeOpen] = useState(false)
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  // Clear pending state once navigation completes
+  useEffect(() => { setPendingHref(null) }, [pathname])
 
   const isPracticeActive = PRACTICE_PATHS.includes(pathname)
 
@@ -87,7 +91,9 @@ export default function BottomTabBar() {
         <div className="grid grid-cols-5 h-full">
           {tabs.map((tab) => {
             const Icon = tab.icon
-            const isActive = tab.isPractice ? isPracticeActive : (tab.href ? pathname === tab.href : false)
+            const isActive = tab.isPractice
+              ? isPracticeActive
+              : (tab.href ? (pendingHref ? pendingHref === tab.href : pathname === tab.href) : false)
 
             if (tab.isPractice) {
               return (
@@ -118,6 +124,7 @@ export default function BottomTabBar() {
               <Link
                 key={tab.href}
                 href={tab.href!}
+                onClick={() => tab.href && setPendingHref(tab.href)}
                 className="relative flex flex-col items-center justify-center gap-1 transition-colors"
               >
                 {isActive && (

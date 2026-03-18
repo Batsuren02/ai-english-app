@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
@@ -60,6 +61,14 @@ interface SidebarNavProps {
 }
 
 export default function SidebarNav({ pathname, onNavigate }: SidebarNavProps) {
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  // Clear pending state once navigation completes (pathname changed)
+  useEffect(() => { setPendingHref(null) }, [pathname])
+
+  const isActive = (href: string) => pendingHref ? pendingHref === href : pathname === href
+  const handleClick = (href: string) => { setPendingHref(href); onNavigate?.() }
+
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -88,7 +97,7 @@ export default function SidebarNav({ pathname, onNavigate }: SidebarNavProps) {
       {/* Main nav */}
       <nav className="flex flex-col gap-0.5 px-3 flex-1 overflow-y-auto">
         {MAIN_NAV.map(({ href, label, icon }) => (
-          <NavItem key={href} href={href} label={label} icon={icon} active={pathname === href} onClick={onNavigate} />
+          <NavItem key={href} href={href} label={label} icon={icon} active={isActive(href)} onClick={() => handleClick(href)} />
         ))}
 
         {/* Practice section */}
@@ -96,14 +105,14 @@ export default function SidebarNav({ pathname, onNavigate }: SidebarNavProps) {
           Practice
         </p>
         {PRACTICE_NAV.map(({ href, label, icon }) => (
-          <NavItem key={href} href={href} label={label} icon={icon} active={pathname === href} onClick={onNavigate} indent />
+          <NavItem key={href} href={href} label={label} icon={icon} active={isActive(href)} onClick={() => handleClick(href)} indent />
         ))}
       </nav>
 
       {/* Bottom: Stats + Settings + Theme */}
       <div className="px-3 pb-2 pt-2 border-t border-[var(--border)] flex-shrink-0 space-y-0.5">
         {BOTTOM_NAV.map(({ href, label, icon }) => (
-          <NavItem key={href} href={href} label={label} icon={icon} active={pathname === href} onClick={onNavigate} />
+          <NavItem key={href} href={href} label={label} icon={icon} active={isActive(href)} onClick={() => handleClick(href)} />
         ))}
         <div className="px-1 pt-2">
           <ThemeSwitcher />

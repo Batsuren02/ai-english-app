@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, Word, Review } from '@/lib/supabase'
 import Papa from 'papaparse'
 import { Plus, Download, Copy, Check } from 'lucide-react'
@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToastContext } from '@/components/ToastProvider'
+import { usePageCache } from '@/lib/hooks/usePageCache'
+import { invalidateCache } from '@/lib/data-cache'
 
 // Words feature components
 import WordCard from '@/components/words/WordCard'
@@ -27,6 +29,32 @@ import { WordWithReview, CATEGORIES, LEVELS } from '@/components/words/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 30
+
+// ─── Pure helpers (outside component for stable references) ──────────────────
+function enrichWords(wordsData: Word[], reviewsData: Review[]): WordWithReview[] {
+  const reviewMap = new Map(reviewsData.map((r: Review) => [r.word_id, r]))
+  return wordsData.map((word) => {
+    const review = reviewMap.get(word.id)
+    const reps = review?.repetitions || 0
+    let masteryLevel: 'mastered' | 'learning' | 'needs_review'
+    let progressPercent = 0
+    if (reps === 0) { masteryLevel = 'needs_review'; progressPercent = 0 }
+    else if (reps < 3) { masteryLevel = 'learning'; progressPercent = (reps / 3) * 100 }
+    else { masteryLevel = 'mastered'; progressPercent = 100 }
+    return { ...word, review, masteryLevel, progressPercent }
+  })
+}
+
+async function fetchWordsPage0(): Promise<{ words: WordWithReview[]; hasMore: boolean }> {
+  const [wordsRes, reviewsRes] = await Promise.all([
+    supabase.from('words').select('*').order('created_at', { ascending: false }).range(0, PAGE_SIZE - 1),
+    supabase.from('reviews').select('*'),
+  ])
+  return {
+    words: enrichWords(wordsRes.data ?? [], reviewsRes.data ?? []),
+    hasMore: (wordsRes.data?.length ?? 0) === PAGE_SIZE,
+  }
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WordsPage() {
@@ -44,8 +72,22 @@ export default function WordsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [selectedWord, setSelectedWord] = useState<WordWithReview | null>(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState<string | null>(null)
+
+  // ── Initial data (stale-while-revalidate) ────────────────────────────────
+  const { data: pageData, loading } = usePageCache('words-list', fetchWordsPage0, 15_000)
+
+  // Sync cache result → local words state (only for page-0 data)
+  const syncedRef = useRef(false)
+  useEffect(() => {
+    if (!pageData) return
+    // Apply immediately on first load; also apply when user is still on page 0 (no pagination)
+    if (!syncedRef.current || offset === 0) {
+      syncedRef.current = true
+      setWords(pageData.words)
+      setHasMore(pageData.hasMore)
+    }
+  }, [pageData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Add-word form
   const [jsonInput, setJsonInput] = useState('')
@@ -63,11 +105,6 @@ export default function WordsPage() {
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState<Partial<Word>>({})
   const [lookingUp, setLookingUp] = useState(false)
-
-  // ── Data loading ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    loadWords()
-  }, [])
 
   const filtered = useMemo(() => {
     let f = words
@@ -93,36 +130,16 @@ export default function WordsPage() {
     })
   }, [words, search, filterCat, filterLevel, filterMastery, sortBy])
 
-  function enrichWords(wordsData: Word[], reviewsData: Review[]): WordWithReview[] {
-    const reviewMap = new Map(reviewsData.map((r: Review) => [r.word_id, r]))
-    return wordsData.map((word) => {
-      const review = reviewMap.get(word.id)
-      const reps = review?.repetitions || 0
-      let masteryLevel: 'mastered' | 'learning' | 'needs_review'
-      let progressPercent = 0
-      if (reps === 0) { masteryLevel = 'needs_review'; progressPercent = 0 }
-      else if (reps < 3) { masteryLevel = 'learning'; progressPercent = (reps / 3) * 100 }
-      else { masteryLevel = 'mastered'; progressPercent = 100 }
-      return { ...word, review, masteryLevel, progressPercent }
-    })
-  }
-
   async function loadWords() {
     try {
-      const { data: wordsData } = await supabase.from('words').select('*').order('created_at', { ascending: false }).range(0, PAGE_SIZE - 1)
-      const { data: reviewsData } = await supabase.from('reviews').select('*')
-
-      if (wordsData && reviewsData) {
-        const enriched = enrichWords(wordsData, reviewsData)
-        setWords(enriched)
-        setOffset(0)
-        setHasMore(wordsData.length === PAGE_SIZE)
-      }
+      const result = await fetchWordsPage0()
+      setWords(result.words)
+      setOffset(0)
+      setHasMore(result.hasMore)
     } catch (error) {
       console.error('Failed to load words:', error)
       toast.error('Failed to load words')
     }
-    setLoading(false)
   }
 
   async function loadMoreWords() {
@@ -180,6 +197,7 @@ export default function WordsPage() {
       toast.success(`${toInsert.length} word(s) imported successfully!`)
       setJsonInput('')
       setShowAdd(false)
+      invalidateCache('words-list')
       await loadWords()
     } catch {
       toast.error('Invalid JSON. Please check the format and ensure it is valid JSON.')
@@ -215,6 +233,7 @@ export default function WordsPage() {
       category: 'daily',
     })
     setShowAdd(false)
+    invalidateCache('words-list')
     await loadWords()
     setSaving(false)
   }
@@ -226,6 +245,7 @@ export default function WordsPage() {
     setSelectedWord(null)
     setShowDetails(false)
     setDeleteConfirmId(null)
+    invalidateCache('words-list')
     await loadWords()
   }
 
@@ -243,6 +263,7 @@ export default function WordsPage() {
     if (!error) {
       toast.success(`"${editForm.word || selectedWord.word}" updated!`)
       setEditMode(false)
+      invalidateCache('words-list')
       await loadWords()
       setSelectedWord(prev => prev ? { ...prev, ...editForm } as WordWithReview : null)
     } else {

@@ -11,26 +11,9 @@ import { speakWord } from '@/lib/speech-utils'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
+import { isAnswerCorrect } from '@/lib/algorithms'
 
 type SessionState = 'setup' | 'drilling' | 'complete'
-
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length
-  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)])
-  for (let j = 0; j <= n; j++) dp[0][j] = j
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
-  return dp[m][n]
-}
-
-function isAnswerCorrect(userAnswer: string, correct: string): boolean {
-  const u = userAnswer.trim().toLowerCase()
-  const c = correct.trim().toLowerCase()
-  if (u === c) return true
-  // Allow 1 typo for longer words
-  return c.length > 4 && levenshtein(u, c) <= 1
-}
 
 export default function DrillsPage() {
   const [state, setState] = useState<SessionState>('setup')

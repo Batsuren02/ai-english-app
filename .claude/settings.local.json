@@ -83,7 +83,10 @@
       "Bash(cmd /c \"tasklist /FI \"\"PID eq 52604\"\" 2>&1\")",
       "Bash(cmd /c \"taskkill /F /PID 52604\")",
       "Bash(find \"C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/lib\" -name \"*.ts\" -exec wc -l {} +)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(wc -l /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/components/design/*.tsx)",
+      "Bash(wc -l /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/components/*.tsx)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

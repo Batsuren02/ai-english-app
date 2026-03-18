@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase, UserProfile } from '@/lib/supabase'
 import { Save, Copy, Check, AlertCircle, Eye, Palette, LayoutList } from 'lucide-react'
 import { PROMPTS } from '@/lib/prompts'
@@ -10,10 +10,18 @@ import SurfaceCard from '@/components/design/SurfaceCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import FormInput from '@/components/design/FormInput'
 import { useToastContext } from '@/components/ToastProvider'
+import { usePageCache } from '@/lib/hooks/usePageCache'
+import { invalidateCache } from '@/lib/data-cache'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+async function fetchSettingsProfile() {
+  const { data } = await supabase.from('user_profile').select('*').limit(1).maybeSingle()
+  return data
+}
 
 export default function SettingsPage() {
   const toast = useToastContext()
+  const { data: cachedProfile } = usePageCache('settings-profile', fetchSettingsProfile, 60_000)
   const [profile, setProfile] = useState<Partial<UserProfile>>({
     cefr_level: 'B1', goal: 'general', daily_target_minutes: 20
   })
@@ -33,11 +41,13 @@ export default function SettingsPage() {
     } catch {}
   }, [])
 
+  const profileSyncedRef = useRef(false)
   useEffect(() => {
-    supabase.from('user_profile').select('*').limit(1).maybeSingle().then(({ data }) => {
-      if (data) setProfile(data)
-    })
-  }, [])
+    if (cachedProfile && !profileSyncedRef.current) {
+      profileSyncedRef.current = true
+      setProfile(cachedProfile)
+    }
+  }, [cachedProfile])
 
   async function save(): Promise<void> {
     if (!profile.id) {
@@ -60,6 +70,7 @@ export default function SettingsPage() {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
         toast.success('Settings saved!')
+        invalidateCache('settings-profile')
       }
     } catch (err) {
       setError(`Error saving settings: ${err instanceof Error ? err.message : 'Unknown error'}`)

@@ -41,7 +41,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         {/* ─── Main content ───────────────────────────────────────── */}
         {/* Desktop: offset by sidebar | Mobile: offset by slim top bar + bottom tab bar */}
         <main className="flex-1 md:ml-[240px] pt-10 pb-20 md:pt-0 md:pb-0 min-w-0">
-          <div className="max-w-[900px] mx-auto px-5 py-8">
+          <div className="max-w-[900px] mx-auto px-5 py-8 md:pt-4">
             {children}
           </div>
         </main>

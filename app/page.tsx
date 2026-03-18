@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word } from '@/lib/supabase'
+import { usePageCache } from '@/lib/hooks/usePageCache'
 import Link from 'next/link'
 import { TrendingUp, AlertTriangle, BookOpen, Mic2, FileText, Zap, ChevronRight, Dumbbell, Shield } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
@@ -12,74 +13,83 @@ import HeroSection from '@/components/design/HeroSection'
 import { SkeletonStat } from '@/components/design/Skeleton'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
+interface DashboardData {
+  profile: UserProfile | null
+  dueCount: number
+  totalWords: number
+  weakWords: (Word & { ease_factor: number })[]
+  recentActivity: { date: string; count: number }[]
+  readingSessions: number
+  pronunciationAttempts: number
+}
+
+async function fetchDashboard(): Promise<DashboardData> {
+  const today = new Date().toISOString().split('T')[0]
+  const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
+    supabase.from('user_profile').select('*').limit(1).maybeSingle(),
+    supabase.from('words').select('id', { count: 'exact', head: true }),
+    supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
+    supabase.from('reviews').select('word_id, ease_factor, words(id, word, definition)').order('ease_factor', { ascending: true }).limit(5),
+    supabase.from('review_logs').select('created_at').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+    supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
+    supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
+  ])
+
+  const weakWords = (weakRes.data ?? [])
+    .filter((r: any) => r.words)
+    .map((r: any) => ({ ...r.words, ease_factor: r.ease_factor }))
+
+  const counts: Record<string, number> = {}
+  ;(logsRes.data ?? []).forEach((log: any) => {
+    const d = log.created_at.split('T')[0]
+    counts[d] = (counts[d] || 0) + 1
+  })
+  const recentActivity = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0]
+    return { date: d.slice(5), count: counts[d] || 0 }
+  })
+
+  return {
+    profile: profileRes.data ?? null,
+    dueCount: dueRes.count ?? 0,
+    totalWords: wordsRes.count ?? 0,
+    weakWords,
+    recentActivity,
+    readingSessions: readingRes.count ?? 0,
+    pronunciationAttempts: pronunciationRes.count ?? 0,
+  }
+}
+
 export default function Dashboard() {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [dueCount, setDueCount] = useState(0)
-  const [totalWords, setTotalWords] = useState(0)
-  const [weakWords, setWeakWords] = useState<(Word & { ease_factor: number })[]>([])
-  const [recentActivity, setRecentActivity] = useState<{ date: string; count: number }[]>([])
-  const [readingSessions, setReadingSessions] = useState(0)
-  const [pronunciationAttempts, setPronunciationAttempts] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = usePageCache<DashboardData>('dashboard', fetchDashboard, 30_000)
   const [streakProtected, setStreakProtected] = useState(false)
 
-  useEffect(() => { loadDashboard() }, [])
+  const profile = data?.profile ?? null
+  const dueCount = data?.dueCount ?? 0
+  const totalWords = data?.totalWords ?? 0
+  const weakWords = data?.weakWords ?? []
+  const recentActivity = data?.recentActivity ?? []
+  const readingSessions = data?.readingSessions ?? 0
+  const pronunciationAttempts = data?.pronunciationAttempts ?? 0
 
-  async function loadDashboard(): Promise<void> {
+  // Streak freeze logic (localStorage side-effect, runs once profile loads)
+  useEffect(() => {
+    if (!profile) return
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes] = await Promise.all([
-        supabase.from('user_profile').select('*').limit(1).maybeSingle(),
-        supabase.from('words').select('id', { count: 'exact', head: true }),
-        supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
-        supabase.from('reviews').select('word_id, ease_factor, words(id, word, definition)').order('ease_factor', { ascending: true }).limit(5),
-        supabase.from('review_logs').select('created_at').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-        supabase.from('reading_sessions').select('id', { count: 'exact', head: true }),
-        supabase.from('pronunciation_attempts').select('id', { count: 'exact', head: true }),
-      ])
-      if (profileRes.data) {
-        setProfile(profileRes.data)
-        // Streak recovery — 1 free freeze per week (localStorage-based, no migration needed)
-        try {
-          const streak = profileRes.data.current_streak || 0
-          if (streak > 0) {
-            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-            const weekKey = `streak_freeze_week_${new Date().toISOString().slice(0, 7)}`
-            const usedThisWeek = localStorage.getItem(weekKey) === 'used'
-            const lastActivity = localStorage.getItem('last_activity_date')
-            if (lastActivity && lastActivity < yesterday && !usedThisWeek) {
-              // Missed a day — auto-protect streak if freeze available
-              localStorage.setItem(weekKey, 'used')
-              setStreakProtected(true)
-            }
-          }
-          // Track today's activity date
-          localStorage.setItem('last_activity_date', new Date().toISOString().split('T')[0])
-        } catch {}
+      const streak = profile.current_streak || 0
+      if (streak > 0) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+        const weekKey = `streak_freeze_week_${new Date().toISOString().slice(0, 7)}`
+        const usedThisWeek = localStorage.getItem(weekKey) === 'used'
+        const lastActivity = localStorage.getItem('last_activity_date')
+        if (lastActivity && lastActivity < yesterday && !usedThisWeek) {
+          localStorage.setItem(weekKey, 'used')
+          setStreakProtected(true)
+        }
       }
-      if (wordsRes.count !== null) setTotalWords(wordsRes.count)
-      if (dueRes.count !== null) setDueCount(dueRes.count)
-      if (readingRes.count !== null) setReadingSessions(readingRes.count)
-      if (pronunciationRes.count !== null) setPronunciationAttempts(pronunciationRes.count)
-      if (weakRes.data) {
-        setWeakWords(weakRes.data.filter((r: any) => r.words).map((r: any) => ({ ...r.words, ease_factor: r.ease_factor })))
-      }
-      if (logsRes.data) {
-        const counts: Record<string, number> = {}
-        logsRes.data.forEach((log: any) => {
-          const d = log.created_at.split('T')[0]
-          counts[d] = (counts[d] || 0) + 1
-        })
-        setRecentActivity(Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0]
-          return { date: d.slice(5), count: counts[d] || 0 }
-        }))
-      }
-    } catch (err) {
-      console.error('Failed to load dashboard:', err)
-    }
-    setLoading(false)
-  }
+      localStorage.setItem('last_activity_date', new Date().toISOString().split('T')[0])
+    } catch {}
+  }, [profile])
 
   if (loading) return (
     <div className="space-y-6 fade-in">

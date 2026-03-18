@@ -1,134 +1,134 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { supabase, ReviewLog, Review, Word, UserProfile } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { format, addDays, startOfDay, formatDistanceToNow } from 'date-fns'
-import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, BookOpen, Clock, CalendarDays } from 'lucide-react'
+import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, Clock, CalendarDays } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
 import LoadingSpinner from '@/components/design/LoadingSpinner'
 import EmptyState from '@/components/design/EmptyState'
 import Link from 'next/link'
+import { usePageCache } from '@/lib/hooks/usePageCache'
+
+interface StatsData {
+  weeklyData: { date: string; total: number; correct: number }[]
+  quizTypeData: { type: string; accuracy: number; count: number }[]
+  calendarData: Record<string, number>
+  wordsPerLevel: { level: string; count: number }[]
+  weakWords: (Pick<Word, 'word' | 'definition'> & { ease_factor: number })[]
+  totalReviews: number
+  avgAccuracy: number
+  totalWords: number
+  profile: UserProfile | null
+  forecastData: { day: string; count: number }[]
+  avgStudyMinutes: number
+}
+
+async function fetchStats(): Promise<StatsData> {
+  const { addDays: _addDays, startOfDay: _startOfDay, format: _format } = await import('date-fns')
+  const todayStart = _startOfDay(new Date())
+  const next7 = _addDays(todayStart, 7)
+
+  const [logsRes, wordsRes, reviewsRes, profileRes, forecastRes] = await Promise.all([
+    supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).limit(500),
+    supabase.from('words').select('id, cefr_level, category'),
+    supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor', { ascending: true }).limit(10),
+    supabase.from('user_profile').select('*').limit(1).maybeSingle(),
+    supabase.from('reviews').select('next_review').gte('next_review', todayStart.toISOString().split('T')[0]).lte('next_review', next7.toISOString().split('T')[0]),
+  ])
+
+  const logs: ReviewLog[] = logsRes.data ?? []
+  const totalReviews = logs.length
+  const correct = logs.filter((l: ReviewLog) => l.result >= 3).length
+  const avgAccuracy = logs.length ? Math.round(correct / logs.length * 100) : 0
+
+  // 7-day chart
+  const days: Record<string, { total: number; correct: number }> = {}
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
+    days[d] = { total: 0, correct: 0 }
+  }
+  logs.forEach((l: ReviewLog) => {
+    const d = l.created_at.split('T')[0]
+    if (days[d]) { days[d].total++; if (l.result >= 3) days[d].correct++ }
+  })
+  const weeklyData = Object.entries(days).map(([date, v]) => ({ date: date.slice(5), ...v }))
+
+  // Calendar: last 12 weeks
+  const calendarData: Record<string, number> = {}
+  logs.forEach((l: ReviewLog) => { const d = l.created_at.split('T')[0]; calendarData[d] = (calendarData[d] || 0) + 1 })
+
+  // Avg daily study time
+  const dayTotals = new Map<string, number>()
+  logs.forEach((l: ReviewLog) => {
+    if (l.response_time_ms > 0) {
+      const day = l.created_at.split('T')[0]
+      dayTotals.set(day, (dayTotals.get(day) ?? 0) + l.response_time_ms)
+    }
+  })
+  const activeDays = dayTotals.size
+  const totalMs = [...dayTotals.values()].reduce((a, b) => a + b, 0)
+  const avgStudyMinutes = activeDays > 0 ? Math.max(1, Math.round(totalMs / activeDays / 1000 / 60)) : 0
+
+  // Quiz type accuracy
+  const types: Record<string, { total: number; correct: number }> = {}
+  logs.forEach((l: ReviewLog) => {
+    if (!types[l.quiz_type]) types[l.quiz_type] = { total: 0, correct: 0 }
+    types[l.quiz_type].total++; if (l.result >= 3) types[l.quiz_type].correct++
+  })
+  const quizTypeData = Object.entries(types).map(([type, v]) => ({
+    type, accuracy: v.total > 0 ? Math.round(v.correct / v.total * 100) : 0, count: v.total
+  }))
+
+  // Words per level
+  const lvls: Record<string, number> = {}
+  ;(wordsRes.data ?? []).forEach((w: Pick<Word, 'id' | 'cefr_level' | 'category'>) => {
+    if (w.cefr_level) lvls[w.cefr_level] = (lvls[w.cefr_level] || 0) + 1
+  })
+  const wordsPerLevel = Object.entries(lvls).map(([level, count]) => ({ level, count }))
+
+  // Weak words
+  type WordEmbed = { word: string; definition: string }
+  type ReviewWithWord = { word_id: string; ease_factor: number; words: WordEmbed | WordEmbed[] | null }
+  const typed = (reviewsRes.data ?? []) as ReviewWithWord[]
+  const weakWords = typed.filter((r) => r.words).map((r) => {
+    const w = Array.isArray(r.words) ? r.words[0] : r.words!
+    return { word: w.word, definition: w.definition, ease_factor: r.ease_factor }
+  })
+
+  // 7-day forecast
+  const forecastData = Array.from({ length: 7 }, (_, i) => {
+    const day = _addDays(todayStart, i)
+    const dayStr = day.toISOString().split('T')[0]
+    const count = (forecastRes.data ?? []).filter((r: Pick<Review, 'next_review'>) => {
+      return r.next_review.split('T')[0] === dayStr
+    }).length
+    return { day: i === 0 ? 'Today' : _format(day, 'EEE'), count }
+  })
+
+  return {
+    weeklyData, quizTypeData, calendarData, wordsPerLevel, weakWords,
+    totalReviews, avgAccuracy, totalWords: wordsRes.data?.length ?? 0,
+    profile: profileRes.data ?? null, forecastData, avgStudyMinutes,
+  }
+}
 
 export default function StatsPage() {
-  const [weeklyData, setWeeklyData] = useState<{ date: string; total: number; correct: number }[]>([])
-  const [quizTypeData, setQuizTypeData] = useState<{ type: string; accuracy: number; count: number }[]>([])
-  const [calendarData, setCalendarData] = useState<Record<string, number>>({})
-  const [wordsPerLevel, setWordsPerLevel] = useState<{ level: string; count: number }[]>([])
-  const [weakWords, setWeakWords] = useState<(Pick<Word, 'word' | 'definition'> & { ease_factor: number })[]>([])
-  const [totalReviews, setTotalReviews] = useState(0)
-  const [avgAccuracy, setAvgAccuracy] = useState(0)
-  const [totalWords, setTotalWords] = useState(0)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [forecastData, setForecastData] = useState<{ day: string; count: number }[]>([])
-  const [avgStudyMinutes, setAvgStudyMinutes] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, loading, error, reload } = usePageCache<StatsData>('stats', fetchStats, 60_000)
 
-  useEffect(() => { loadStats() }, [])
-
-  async function loadStats() {
-    const todayStart = startOfDay(new Date())
-    const next7 = addDays(todayStart, 7)
-
-    try {
-    const [logsRes, wordsRes, reviewsRes, profileRes, forecastRes] = await Promise.all([
-      supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()),
-      supabase.from('words').select('id, cefr_level, category'),
-      supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor', { ascending: true }).limit(10),
-      supabase.from('user_profile').select('*').limit(1).maybeSingle(),
-      supabase.from('reviews').select('next_review').gte('next_review', todayStart.toISOString().split('T')[0]).lte('next_review', next7.toISOString().split('T')[0]),
-    ])
-
-    if (profileRes.data) setProfile(profileRes.data)
-    if (wordsRes.count !== undefined) setTotalWords(wordsRes.data?.length || 0)
-
-    // Build 7-day review forecast
-    if (forecastRes.data) {
-      const forecast = Array.from({ length: 7 }, (_, i) => {
-        const day = addDays(todayStart, i)
-        const dayStr = day.toISOString().split('T')[0]
-        const count = forecastRes.data!.filter((r: Pick<Review, 'next_review'>) => {
-          const reviewDay = r.next_review.split('T')[0]
-          return reviewDay === dayStr
-        }).length
-        return { day: i === 0 ? 'Today' : format(day, 'EEE'), count }
-      })
-      setForecastData(forecast)
-    }
-
-    if (logsRes.data) {
-      const logs: ReviewLog[] = logsRes.data
-      setTotalReviews(logs.length)
-      const correct = logs.filter((l: ReviewLog) => l.result >= 3).length
-      setAvgAccuracy(logs.length ? Math.round(correct / logs.length * 100) : 0)
-
-      // 7-day chart
-      const days: Record<string, { total: number; correct: number }> = {}
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
-        days[d] = { total: 0, correct: 0 }
-      }
-      logs.forEach((l: ReviewLog) => {
-        const d = l.created_at.split('T')[0]
-        if (days[d]) { days[d].total++; if (l.result >= 3) days[d].correct++ }
-      })
-      setWeeklyData(Object.entries(days).map(([date, v]) => ({ date: date.slice(5), ...v })))
-
-      // Calendar: last 12 weeks
-      const cal: Record<string, number> = {}
-      logs.forEach((l: ReviewLog) => { const d = l.created_at.split('T')[0]; cal[d] = (cal[d] || 0) + 1 })
-      setCalendarData(cal)
-
-      // Avg daily study time from response_time_ms
-      const dayTotals = new Map<string, number>()
-      logs.forEach((l: ReviewLog) => {
-        if (l.response_time_ms > 0) {
-          const day = l.created_at.split('T')[0]
-          dayTotals.set(day, (dayTotals.get(day) ?? 0) + l.response_time_ms)
-        }
-      })
-      const activeDays = dayTotals.size
-      const totalMs = [...dayTotals.values()].reduce((a, b) => a + b, 0)
-      setAvgStudyMinutes(activeDays > 0 ? Math.max(1, Math.round(totalMs / activeDays / 1000 / 60)) : 0)
-
-      // Quiz type accuracy
-      const types: Record<string, { total: number; correct: number }> = {}
-      logs.forEach((l: ReviewLog) => {
-        if (!types[l.quiz_type]) types[l.quiz_type] = { total: 0, correct: 0 }
-        types[l.quiz_type].total++; if (l.result >= 3) types[l.quiz_type].correct++
-      })
-      setQuizTypeData(Object.entries(types).map(([type, v]) => ({ type, accuracy: v.total > 0 ? Math.round(v.correct / v.total * 100) : 0, count: v.total })))
-    }
-
-    if (wordsRes.data) {
-      const lvls: Record<string, number> = {}
-      wordsRes.data.forEach((w: Pick<Word, 'id' | 'cefr_level' | 'category'>) => { if (w.cefr_level) lvls[w.cefr_level] = (lvls[w.cefr_level] || 0) + 1 })
-      setWordsPerLevel(Object.entries(lvls).map(([level, count]) => ({ level, count })))
-    }
-
-    if (reviewsRes.data) {
-      type WordEmbed = { word: string; definition: string }
-      type ReviewWithWord = { word_id: string; ease_factor: number; words: WordEmbed | WordEmbed[] | null }
-      const typed = reviewsRes.data as ReviewWithWord[]
-      setWeakWords(
-        typed
-          .filter((r) => r.words)
-          .map((r) => {
-            const w = Array.isArray(r.words) ? r.words[0] : r.words!
-            return { word: w.word, definition: w.definition, ease_factor: r.ease_factor }
-          })
-      )
-    }
-
-    } catch (err) {
-      console.error('Failed to load stats:', err)
-      setError('Failed to load statistics. Please refresh the page.')
-    }
-    setLoading(false)
-  }
+  const weeklyData = data?.weeklyData ?? []
+  const quizTypeData = data?.quizTypeData ?? []
+  const calendarData = data?.calendarData ?? {}
+  const wordsPerLevel = data?.wordsPerLevel ?? []
+  const weakWords = data?.weakWords ?? []
+  const totalReviews = data?.totalReviews ?? 0
+  const avgAccuracy = data?.avgAccuracy ?? 0
+  const totalWords = data?.totalWords ?? 0
+  const profile = data?.profile ?? null
+  const forecastData = data?.forecastData ?? []
+  const avgStudyMinutes = data?.avgStudyMinutes ?? 0
 
   async function exportForClaude() {
     const { data: logs } = await supabase.from('review_logs').select('*, words(word, category, cefr_level)').order('created_at', { ascending: false }).limit(200)
@@ -215,7 +215,7 @@ export default function StatsPage() {
   if (error) return (
     <div className="flex flex-col items-center justify-center h-72 gap-4 text-center">
       <p className="body text-[var(--error)]">{error}</p>
-      <button onClick={() => { setError(null); setLoading(true); loadStats() }} className="text-sm text-[var(--accent)] underline">
+      <button onClick={reload} className="text-sm text-[var(--accent)] underline">
         Try again
       </button>
     </div>

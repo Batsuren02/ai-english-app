@@ -32,7 +32,7 @@ export default function WordFilters({
   setSortBy,
 }: WordFiltersProps) {
   return (
-    <div className="sticky top-[40px] md:top-0 z-10 bg-[var(--bg)] py-2 space-y-3">
+    <div className="sticky top-[40px] md:top-4 z-10 -mx-5 px-5 bg-[var(--bg)] pt-2 pb-3 space-y-3 border-b border-[var(--border)]">
       {/* Search bar */}
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />

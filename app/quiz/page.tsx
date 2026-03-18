@@ -18,6 +18,7 @@ import InteractiveButton from '@/components/design/InteractiveButton'
 import { TextPrimary, TextSecondary } from '@/components/design/Text'
 import { useToastContext } from '@/components/ToastProvider'
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
+import { usePageCache } from '@/lib/hooks/usePageCache'
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
   mcq:         { label: 'Multiple Choice', icon: '🔤', desc: 'Choose the correct word from 4 options', color: '#2563eb' },
@@ -31,11 +32,41 @@ const QUIZ_META: Record<string, { label: string; icon: string; desc: string; col
 type SessionResult = { word: Word; type: QuizType; correct: boolean; timeMs: number }
 type MatchState = { wordOrder: string[]; defOrder: string[]; selected: string | null; matched: Record<string, string>; wrong: string[] }
 
+interface QuizData {
+  words: Word[]
+  easeMap: Record<string, number>
+  weakTypeMap: Partial<Record<QuizType, number>>
+  interleaveConfig: { newWordRatio: number; categoryPenalty: number }
+}
+
+async function fetchQuizData(): Promise<QuizData> {
+  const [wordsRes, reviewsRes, logsRes, profileRes] = await Promise.all([
+    supabase.from('words').select('*'),
+    supabase.from('reviews').select('word_id, ease_factor'),
+    supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+    supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').limit(1).maybeSingle(),
+  ])
+
+  const easeMap: Record<string, number> = {}
+  ;(reviewsRes.data ?? []).forEach((r: { word_id: string; ease_factor: number }) => { easeMap[r.word_id] = r.ease_factor })
+
+  const byType: Record<string, { correct: number; total: number }> = {}
+  ;(logsRes.data ?? []).forEach((l: { quiz_type: string; result: number }) => {
+    if (!byType[l.quiz_type]) byType[l.quiz_type] = { correct: 0, total: 0 }
+    byType[l.quiz_type].total++
+    if (l.result >= 3) byType[l.quiz_type].correct++
+  })
+  const weakTypeMap: Partial<Record<QuizType, number>> = {}
+  for (const [type, { correct, total }] of Object.entries(byType)) {
+    weakTypeMap[type as QuizType] = total ? Math.round(correct / total * 100) : 50
+  }
+
+  const interleaveConfig = profileRes.data ? parseInterleaveConfig(profileRes.data) : { newWordRatio: 0.25, categoryPenalty: 0.6 }
+
+  return { words: wordsRes.data ?? [], easeMap, weakTypeMap, interleaveConfig }
+}
+
 export default function QuizPage() {
-  const [words, setWords] = useState<Word[]>([])
-  const [easeMap, setEaseMap] = useState<Record<string, number>>({})
-  const [weakTypeMap, setWeakTypeMap] = useState<Partial<Record<QuizType, number>>>({})
-  const [interleaveConfig, setInterleaveConfig] = useState({ newWordRatio: 0.25, categoryPenalty: 0.6 })
   const [recentCategories, setRecentCategories] = useState<string[]>([])
   const [mode, setMode] = useState<QuizType | 'auto' | null>(null)
   const [quiz, setQuiz] = useState<Quiz | null>(null)
@@ -47,7 +78,6 @@ export default function QuizPage() {
   const [sessionLength] = useState(() => {
     try { return parseInt(localStorage.getItem('quiz_session_length') ?? '10') } catch { return 10 }
   })
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
@@ -55,8 +85,11 @@ export default function QuizPage() {
   const [matchDone, setMatchDone] = useState(false)
   const startTimeRef = useRef(Date.now())
   const toast = useToastContext()
-
-  useEffect(() => { loadData() }, [])
+  const { data: quizData, loading, reload: reloadQuizData } = usePageCache<QuizData>('quiz-data', fetchQuizData, 60_000)
+  const words = quizData?.words ?? []
+  const easeMap = quizData?.easeMap ?? {}
+  const weakTypeMap = quizData?.weakTypeMap ?? {}
+  const interleaveConfig = quizData?.interleaveConfig ?? { newWordRatio: 0.25, categoryPenalty: 0.6 }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -66,47 +99,6 @@ export default function QuizPage() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
-
-  async function loadData() {
-    try {
-      const [wordsRes, reviewsRes, logsRes, profileRes] = await Promise.all([
-        supabase.from('words').select('*'),
-        supabase.from('reviews').select('word_id, ease_factor'),
-        supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-        supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').limit(1).maybeSingle(),
-      ])
-      if (wordsRes.data) setWords(wordsRes.data)
-      if (reviewsRes.data) {
-        const em: Record<string, number> = {}
-        reviewsRes.data.forEach((r: { word_id: string; ease_factor: number }) => { em[r.word_id] = r.ease_factor })
-        setEaseMap(em)
-      }
-      if (logsRes.data) {
-        const byType: Record<string, { correct: number; total: number }> = {}
-        logsRes.data.forEach((l: { quiz_type: string; result: number }) => {
-          if (!byType[l.quiz_type]) byType[l.quiz_type] = { correct: 0, total: 0 }
-          byType[l.quiz_type].total++
-          if (l.result >= 3) byType[l.quiz_type].correct++
-        })
-        const wm: Partial<Record<QuizType, number>> = {}
-        for (const [type, { correct, total }] of Object.entries(byType)) {
-          wm[type as QuizType] = total ? Math.round(correct / total * 100) : 50
-        }
-        setWeakTypeMap(wm)
-      }
-      if (profileRes.data) {
-        const config = parseInterleaveConfig(profileRes.data)
-        setInterleaveConfig(config)
-      }
-    } catch (err) {
-      console.error('Failed to load quiz data:', err)
-      setError('Failed to load quiz data. Please refresh the page.')
-      toast.error('Failed to load quiz data')
-    }
-    setLoading(false)
-  }
-
-
 
   function buildQuiz(type: QuizType): Quiz | null {
     if (type === 'matching') return generateMatching(words)
@@ -233,7 +225,7 @@ export default function QuizPage() {
   if (error) return (
     <div className="flex flex-col items-center justify-center h-72 gap-4 text-center">
       <p className="body text-[var(--error)]">{error}</p>
-      <button onClick={() => { setError(null); setLoading(true); loadData() }} className="text-sm text-[var(--accent)] underline">
+      <button onClick={() => { setError(null); reloadQuizData() }} className="text-sm text-[var(--accent)] underline">
         Try again
       </button>
     </div>
