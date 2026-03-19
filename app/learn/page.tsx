@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
-import { CheckCircle, XCircle, Volume2, RotateCcw, Award, BookOpen, Flame, ThumbsUp, ThumbsDown, Calendar } from 'lucide-react'
+import { CheckCircle, XCircle, RotateCcw, Award, Flame, ThumbsUp, ThumbsDown } from 'lucide-react'
+import LearningCard from '@/components/learn/LearningCard'
+import RatingButtons from '@/components/learn/RatingButtons'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
 import InteractiveButton from '@/components/design/InteractiveButton'
@@ -11,8 +13,13 @@ import { TextPrimary, TextSecondary } from '@/components/design/Text'
 import CelebrationBanner from '@/components/design/CelebrationBanner'
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import { useToastContext } from '@/components/ToastProvider'
-import { speakWord } from '@/lib/speech-utils'
 import { useLearningSession } from '@/lib/hooks/useLearningSession'
+import { awardXP, calculateReviewXP, getLevelInfo, getUserStreak } from '@/lib/xp-system'
+import { incrementChallengeProgress } from '@/lib/challenge-tracker'
+import dynamic from 'next/dynamic'
+import { showXPPopup } from '@/components/XPPopup'
+const LottiePlayer = dynamic(() => import('@/components/LottiePlayer'), { ssr: false })
+const LevelUpModal = dynamic(() => import('@/components/LevelUpModal'), { ssr: false })
 
 export default function LearnPage() {
   const toast = useToastContext()
@@ -22,12 +29,51 @@ export default function LearnPage() {
   const [showMongolianHint, setShowMongolianHint] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSpaceHint, setShowSpaceHint] = useState(true)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number; totalXp: number } | null>(null)
+  const [userStreak, setUserStreak] = useState(0)
 
   useEffect(() => {
     try { setShowMongolianHint(localStorage.getItem('showMongolianHint') === 'true') } catch {}
     const t = setTimeout(() => setShowSpaceHint(false), 3000)
+    getUserStreak().then(setUserStreak).catch(err => console.error('[learn] getUserStreak:', err))
     return () => clearTimeout(t)
   }, [])
+
+  // Award XP whenever a new result is added (i.e., a card was rated)
+  useEffect(() => {
+    const len = session.results.length
+    if (len === 0) return
+    const last = session.results[len - 1]
+    if (last.correct) {
+      const ease = (last.word as any).review?.ease_factor ?? 2.5
+      const xp = calculateReviewXP(ease, userStreak)
+      showXPPopup(xp)
+      incrementChallengeProgress('flashcard_sprint').catch(err => console.error('[learn] challenge:', err))
+    }
+  }, [session.results.length])
+
+  // Award session XP when session completes
+  useEffect(() => {
+    if (!session.sessionDone || session.results.length === 0) return
+    const totalXP = session.results
+      .filter(r => r.correct)
+      .reduce((sum, r) => sum + calculateReviewXP((r.word as any).review?.ease_factor ?? 2.5, userStreak), 0)
+    if (totalXP <= 0) return
+    awardXP(totalXP).then(result => {
+      if (result?.didLevelUp) {
+        setShowConfetti(true)
+        setShowLevelUp(true)
+        setLevelUpData({ oldLevel: result.oldLevel, newLevel: result.newLevel, totalXp: result.totalXp })
+        // Belt-and-suspenders fallback: clear after 8s if modal/animation callbacks don't fire
+        setTimeout(() => { setShowConfetti(false); setShowLevelUp(false) }, 8000)
+      } else {
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 6000)
+      }
+    }).catch(err => console.error('[learn] awardXP:', err))
+  }, [session.sessionDone])
 
   // Keyboard shortcuts: Space/Enter to flip, 1-4 to rate
   useEffect(() => {
@@ -111,6 +157,19 @@ export default function LearnPage() {
     const accuracy = Math.round(correct / results.length * 100)
     return (
       <div className="fade-in-up max-w-2xl mx-auto space-y-6 relative">
+        {showConfetti && (
+          <LottiePlayer src="/animations/confetti.json" variant="cover" fallbackMs={5000} onComplete={() => setShowConfetti(false)} />
+        )}
+        {showLevelUp && (
+          <LottiePlayer src="/animations/level-up.json" variant="cover" fallbackMs={5000} onComplete={() => setShowLevelUp(false)} />
+        )}
+        <LevelUpModal
+          isOpen={!!levelUpData}
+          oldLevel={levelUpData?.oldLevel ?? 1}
+          newLevel={levelUpData?.newLevel ?? 2}
+          totalXp={levelUpData?.totalXp ?? 0}
+          onClose={() => { setLevelUpData(null); setShowLevelUp(false); setShowConfetti(false) }}
+        />
         <CelebrationBanner active />
         <div className="text-center scale-in">
           <div className="flex justify-center mb-4 bounce-in">
@@ -160,7 +219,6 @@ export default function LearnPage() {
   }
 
   if (!current) return null
-  const examples = Array.isArray(current.examples) ? current.examples : []
   const progressPercent = (currentIdx / dueWords.length) * 100
 
   return (
@@ -189,312 +247,27 @@ export default function LearnPage() {
       </div>
 
       {/* Swipeable Word Card */}
-      <div
-        ref={cardRef}
-        onTouchStart={handleCardDown}
-        onTouchMove={handleCardMove}
-        onTouchEnd={handleCardUp}
-        onMouseDown={handleCardDown}
-        onMouseMove={handleCardMove}
-        onMouseUp={handleCardUp}
-        onMouseLeave={handleCardLeave}
-        className="relative w-full cursor-grab active:cursor-grabbing rounded-2xl select-none"
-        style={{
-          height: 'calc(100svh - 220px)',
-          maxHeight: '560px',
-          minHeight: '380px',
-          perspective: '1000px',
-          touchAction: 'none',
-          userSelect: 'none',
-          transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
-          opacity: cardOpacity,
-          transition: cardTransition,
-          transformOrigin: 'center bottom',
-        }}
-      >
-        {/* Card Flip Container */}
-        <div
-          className="relative w-full h-full select-none"
-          style={{
-            transformStyle: 'preserve-3d',
-            transform: showDetails ? 'rotateY(180deg)' : 'rotateY(0deg)',
-            touchAction: 'none',
-            transition: 'transform 700ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-            cursor: 'pointer'
-          }}
-          onClick={() => {
-            const isSwipingLocal = Math.abs(dragX) < 5
-            if (isSwipingLocal) {
-              setShowDetails(!showDetails)
-            }
-          }}
-        >
-          {/* ── Front of Card ────────────────────────────────────── */}
-          <div
-            className="absolute w-full h-full select-none"
-            style={{ backfaceVisibility: 'hidden', touchAction: 'none' }}
-          >
-            <SurfaceCard hover={false} padding="lg" className="text-center relative h-full flex flex-col justify-between bg-gradient-to-br from-[var(--surface)] to-[var(--bg)] overflow-hidden">
-
-              {/* Progressive color overlay */}
-              {dragX !== 0 && (
-                <div
-                  style={{
-                    position: 'absolute', inset: 0, borderRadius: 'inherit',
-                    background: overlayColor,
-                    pointerEvents: 'none',
-                    transition: 'none',
-                    zIndex: 1,
-                  }}
-                />
-              )}
-
-              {/* GOT IT stamp (right swipe) */}
-              <div
-                style={{
-                  position: 'absolute', top: 28, left: 24, zIndex: 10,
-                  opacity: rightProgress,
-                  transform: `rotate(-18deg) scale(${0.7 + rightProgress * 0.35})`,
-                  pointerEvents: 'none',
-                  transition: isDragging ? 'none' : 'all 150ms ease',
-                }}
-              >
-                <div style={{
-                  border: '3px solid var(--success)',
-                  color: 'var(--success)',
-                  padding: '4px 14px',
-                  borderRadius: '6px',
-                  fontWeight: 900,
-                  fontSize: '22px',
-                  fontFamily: 'var(--font-display, serif)',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  lineHeight: 1.2,
-                  textShadow: '0 0 12px color-mix(in srgb, var(--success) 40%, transparent)',
-                  boxShadow: '0 0 0 1px color-mix(in srgb, var(--success) 20%, transparent)',
-                }}>
-                  GOT IT ✓
-                </div>
-              </div>
-
-              {/* NOT YET stamp (left swipe) */}
-              <div
-                style={{
-                  position: 'absolute', top: 28, right: 24, zIndex: 10,
-                  opacity: leftProgress,
-                  transform: `rotate(18deg) scale(${0.7 + leftProgress * 0.35})`,
-                  pointerEvents: 'none',
-                  transition: isDragging ? 'none' : 'all 150ms ease',
-                }}
-              >
-                <div style={{
-                  border: '3px solid var(--error)',
-                  color: 'var(--error)',
-                  padding: '4px 14px',
-                  borderRadius: '6px',
-                  fontWeight: 900,
-                  fontSize: '22px',
-                  fontFamily: 'var(--font-display, serif)',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  lineHeight: 1.2,
-                  textShadow: '0 0 12px color-mix(in srgb, var(--error) 40%, transparent)',
-                  boxShadow: '0 0 0 1px color-mix(in srgb, var(--error) 20%, transparent)',
-                }}>
-                  ✗ NOPE
-                </div>
-              </div>
-
-              {/* NEW badge */}
-              {current.isNew && (
-                <div className="absolute top-4 right-4 z-20">
-                  <span className="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">NEW</span>
-                </div>
-              )}
-
-              {/* Word Display */}
-              <div className="space-y-3 relative z-0">
-                <h1 className="word-hero text-center">{current.word}</h1>
-                <div className="flex items-center justify-center gap-3">
-                  {current.ipa && (
-                    <p className="text-[15px] text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-monospace)' }}>
-                      {current.ipa}
-                    </p>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); speakWord(current.word) }}
-                    className="p-2 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all duration-150"
-                    title="Pronounce word"
-                  >
-                    <Volume2 size={18} />
-                  </button>
-                </div>
-                {current.part_of_speech && (
-                  <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
-                    {current.part_of_speech}
-                  </p>
-                )}
-                {showMongolianHint && current.mongolian && (
-                  <p className="text-center text-sm text-[var(--text-secondary)] italic opacity-70 mt-1">
-                    {current.mongolian}
-                  </p>
-                )}
-              </div>
-
-              {/* Swipe Indicators + Instructions */}
-              <div className="space-y-4 mt-auto pt-6 border-t border-[var(--border)] relative z-0">
-                <div className="flex justify-between items-center px-4">
-                  {/* Left indicator */}
-                  <div
-                    className="flex items-center gap-2"
-                    style={{
-                      opacity: 0.3 + leftProgress * 0.7,
-                      transform: `translateX(${-leftProgress * 8}px) scale(${0.9 + leftProgress * 0.15})`,
-                      color: leftProgress > 0.1 ? `rgba(239, 68, 68, ${0.5 + leftProgress * 0.5})` : 'var(--text-secondary)',
-                      transition: isDragging ? 'none' : 'all 200ms ease',
-                    }}
-                  >
-                    <XCircle size={24} />
-                    <span className="font-semibold text-sm">Not Yet</span>
-                  </div>
-
-                  <div className="text-xs text-[var(--text-secondary)] font-medium">
-                    {showDetails ? 'Flip to swipe' : 'Swipe to rate'}
-                  </div>
-
-                  {/* Right indicator */}
-                  <div
-                    className="flex items-center gap-2"
-                    style={{
-                      opacity: 0.3 + rightProgress * 0.7,
-                      transform: `translateX(${rightProgress * 8}px) scale(${0.9 + rightProgress * 0.15})`,
-                      color: rightProgress > 0.1 ? `rgba(34, 197, 94, ${0.5 + rightProgress * 0.5})` : 'var(--text-secondary)',
-                      transition: isDragging ? 'none' : 'all 200ms ease',
-                    }}
-                  >
-                    <span className="font-semibold text-sm">Got It!</span>
-                    <CheckCircle size={24} />
-                  </div>
-                </div>
-
-                <p className="label text-[var(--text-secondary)] text-center text-sm cursor-pointer hover:text-[var(--accent)] transition-colors">
-                  Tap card to flip
-                </p>
-
-                {/* Space to flip hint pill — desktop only, auto-dismiss after 3s */}
-                {showSpaceHint && (
-                  <div
-                    className="hidden md:flex items-center gap-1.5 mx-auto w-fit px-3 py-1.5 glass rounded-full"
-                    style={{ animation: 'fadeOut 300ms ease 2700ms forwards' }}
-                  >
-                    <kbd className="text-[10px] font-semibold text-[var(--text-secondary)] bg-[var(--border)] px-1.5 py-0.5 rounded">Space</kbd>
-                    <span className="text-[10px] text-[var(--text-secondary)]">to flip</span>
-                  </div>
-                )}
-              </div>
-            </SurfaceCard>
-          </div>
-
-          {/* ── Back of Card ─────────────────────────────────────── */}
-          <div
-            className="absolute w-full h-full select-none"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', touchAction: 'none' }}
-          >
-            <SurfaceCard hover={false} padding="lg" className="relative h-full flex flex-col overflow-hidden">
-
-              {/* ── Top row: word + badges + audio ── */}
-              <div className="flex items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2 min-w-0">
-                  <button
-                    onClick={e => { e.stopPropagation(); speakWord(current.word) }}
-                    className="p-1.5 rounded-lg bg-[var(--bg)] hover:bg-[var(--accent)]/10 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all flex-shrink-0"
-                  >
-                    <Volume2 size={14} />
-                  </button>
-                  <span
-                    className="text-[15px] font-bold text-[var(--text-secondary)] truncate"
-                    style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}
-                  >
-                    {current.word}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {current.part_of_speech && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)] max-w-[90px] truncate">
-                      {current.part_of_speech.split('(')[0].trim()}
-                    </span>
-                  )}
-                  {current.cefr_level && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/12 text-indigo-500 dark:text-indigo-400">
-                      {current.cefr_level}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Definition — the star of the card ── */}
-              <div className="rounded-xl px-4 py-3.5 mb-3" style={{ background: 'color-mix(in srgb, var(--accent) 7%, var(--surface))' }}>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]/70 mb-1.5">Definition</p>
-                <p className="text-[18px] font-semibold text-[var(--text)] leading-snug">
-                  {current.definition}
-                </p>
-                {current.mongolian && (
-                  <p className="text-[13px] text-[var(--text-secondary)] italic mt-2 pt-2 border-t border-[var(--border)]">
-                    🇲🇳 {current.mongolian}
-                  </p>
-                )}
-              </div>
-
-              {/* ── Scrollable extras ── */}
-              <div className="flex-1 overflow-y-auto min-h-0 space-y-2.5">
-
-                {/* Example sentence */}
-                {examples.length > 0 && (
-                  <div className="rounded-xl px-4 py-3.5" style={{ background: 'color-mix(in srgb, var(--accent) 7%, var(--surface))' }}>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]/70 mb-1.5">Example</p>
-                    <p className="text-[14px] text-[var(--text)] italic leading-relaxed">
-                      &ldquo;{examples[0]}&rdquo;
-                    </p>
-                  </div>
-                )}
-
-                {/* Etymology */}
-                {current.etymology_hint && (
-                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
-                    <span className="text-[13px] flex-shrink-0 mt-px">💡</span>
-                    <p className="text-[12px] text-amber-600 dark:text-amber-400 leading-relaxed">
-                      {current.etymology_hint}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* ── Rating buttons ── */}
-              <div className="mt-3 pt-3 border-t border-[var(--border)]" onClick={e => e.stopPropagation()}>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { label: 'Again', q: 0, color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-                    { label: 'Hard',  q: 2, color: '#f97316', bg: 'rgba(249,115,22,0.08)' },
-                    { label: 'Good',  q: 3, color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
-                    { label: 'Easy',  q: 5, color: '#22c55e', bg: 'rgba(34,197,94,0.08)'  },
-                  ].map(({ label, q, color, bg }, i) => (
-                    <button
-                      key={q}
-                      onClick={() => rateWithQuality(q)}
-                      className="py-3 rounded-xl transition-all duration-150 active:scale-95 flex flex-col items-center gap-0.5"
-                      style={{ background: bg, color, border: `1.5px solid ${color}35` }}
-                    >
-                      <span className="text-[13px] font-bold leading-none">{label}</span>
-                      <span className="text-[9px] opacity-40 hidden md:block">[{i + 1}]</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </SurfaceCard>
-          </div>
-        </div>
-      </div>
+      <LearningCard
+        current={current}
+        showDetails={showDetails}
+        dragX={dragX}
+        rotation={rotation}
+        cardOpacity={cardOpacity}
+        rightProgress={rightProgress}
+        leftProgress={leftProgress}
+        overlayColor={overlayColor}
+        cardTransition={cardTransition}
+        isDragging={isDragging}
+        showMongolianHint={showMongolianHint}
+        showSpaceHint={showSpaceHint}
+        cardRef={cardRef as React.RefObject<HTMLDivElement>}
+        onCardDown={handleCardDown}
+        onCardMove={handleCardMove}
+        onCardUp={handleCardUp}
+        onCardLeave={handleCardLeave}
+        onFlip={() => setShowDetails(!showDetails)}
+        onRate={rateWithQuality}
+      />
 
       {/* Button Controls (desktop-friendly) */}
       {!showDetails && (

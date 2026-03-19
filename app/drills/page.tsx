@@ -38,17 +38,18 @@ export default function DrillsPage() {
   async function loadData() {
     try {
       const [wordsRes, reviewsRes, profileRes] = await Promise.all([
-        supabase.from('words').select('*'),
-        supabase.from('reviews').select('*'),
-        supabase.from('user_profile').select('*').limit(1).maybeSingle(),
+        supabase.from('words').select('id, word, definition, part_of_speech, examples, mongolian, cefr_level, collocations, word_family, confused_with, phonetic'),
+        supabase.from('reviews').select('id, word_id, ease_factor, interval_days, repetitions, correct_count, total_reviews, next_review'),
+        supabase.from('user_profile').select('id, drill_ease_threshold, drill_session_length, xp, level').limit(1).maybeSingle(),
       ])
-      if (wordsRes.data) setWords(wordsRes.data)
-      if (reviewsRes.data) setReviews(reviewsRes.data)
+      if (wordsRes.data) setWords(wordsRes.data as unknown as Word[])
+      if (reviewsRes.data) setReviews(reviewsRes.data as unknown as Review[])
       if (profileRes.data) {
-        setProfile(profileRes.data)
+        const p = profileRes.data as UserProfile
+        setProfile(p)
         const newConfig = { ...DEFAULT_DRILL_CONFIG }
-        if ((profileRes.data as any).drill_ease_threshold) newConfig.easeFactorThreshold = (profileRes.data as any).drill_ease_threshold
-        if ((profileRes.data as any).drill_session_length) newConfig.sessionLength = (profileRes.data as any).drill_session_length
+        if (p.drill_ease_threshold) newConfig.easeFactorThreshold = p.drill_ease_threshold
+        if (p.drill_session_length) newConfig.sessionLength = p.drill_session_length
         setConfig(newConfig)
       }
     } catch (err) {
@@ -167,7 +168,7 @@ export default function DrillsPage() {
                     onChange={e => {
                       const val = parseFloat(e.target.value)
                       setConfig(c => ({ ...c, easeFactorThreshold: val }))
-                      void supabase.from('user_profile').update({ drill_ease_threshold: val }).eq('id', (profile as any)?.id)
+                      void supabase.from('user_profile').update({ drill_ease_threshold: val }).eq('id', profile?.id ?? '')
                     }}
                   />
                   <div className="flex justify-between text-[11px] text-[var(--text-secondary)] mt-1.5">
@@ -186,7 +187,7 @@ export default function DrillsPage() {
                     onChange={e => {
                       const val = parseInt(e.target.value)
                       setConfig(c => ({ ...c, sessionLength: val }))
-                      void supabase.from('user_profile').update({ drill_session_length: val }).eq('id', (profile as any)?.id)
+                      void supabase.from('user_profile').update({ drill_session_length: val }).eq('id', profile?.id ?? '')
                     }}
                   />
                   <div className="flex justify-between text-[11px] text-[var(--text-secondary)] mt-1.5">

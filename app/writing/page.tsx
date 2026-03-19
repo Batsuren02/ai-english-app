@@ -31,16 +31,16 @@ interface FeedbackResult {
 
 async function fetchWritingData(): Promise<WritingData> {
   const [wordsRes, reviewsRes] = await Promise.all([
-    supabase.from('words').select('*'),
+    supabase.from('words').select('id, word, definition, examples, mongolian, part_of_speech, cefr_level'),
     supabase.from('reviews').select('word_id, ease_factor, repetitions'),
   ])
 
   const reviewMap: Record<string, { ease_factor: number; repetitions: number }> = {}
-  ;(reviewsRes.data ?? []).forEach((r: any) => {
+  ;(reviewsRes.data ?? []).forEach((r: Pick<import('@/lib/types').Review, 'word_id' | 'ease_factor' | 'repetitions'>) => {
     reviewMap[r.word_id] = { ease_factor: r.ease_factor, repetitions: r.repetitions }
   })
 
-  const words: WritingWord[] = (wordsRes.data ?? [])
+  const words: WritingWord[] = ((wordsRes.data ?? []) as unknown as Word[])
     .map((w: Word) => ({
       word: w,
       ease_factor: reviewMap[w.id]?.ease_factor ?? 2.5,

@@ -2,7 +2,9 @@
 
 import { useMemo } from 'react'
 import { supabase, ReviewLog, Review, Word, UserProfile } from '@/lib/supabase'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import dynamic from 'next/dynamic'
+const StatsBarChart = dynamic(() => import('@/components/StatsBarChart'), { ssr: false })
+const StatsPieChart = dynamic(() => import('@/components/StatsPieChart'), { ssr: false })
 import { Download, TrendingUp, Target, Flame, BookMarked, AlertTriangle, Clock, CalendarDays } from 'lucide-react'
 import SurfaceCard from '@/components/design/SurfaceCard'
 import StatCard from '@/components/design/StatCard'
@@ -32,16 +34,17 @@ async function fetchStats(): Promise<StatsData> {
   const next7 = _addDays(todayStart, 7)
 
   const [logsRes, wordsRes, reviewsRes, profileRes, forecastRes] = await Promise.all([
-    supabase.from('review_logs').select('*').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).limit(500),
+    supabase.from('review_logs').select('created_at, quiz_type, result, response_time_ms').gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).limit(500),
     supabase.from('words').select('id, cefr_level, category'),
     supabase.from('reviews').select('word_id, ease_factor, words(word, definition)').order('ease_factor', { ascending: true }).limit(10),
     supabase.from('user_profile').select('*').limit(1).maybeSingle(),
     supabase.from('reviews').select('next_review').gte('next_review', todayStart.toISOString().split('T')[0]).lte('next_review', next7.toISOString().split('T')[0]),
   ])
 
-  const logs: ReviewLog[] = logsRes.data ?? []
+  type LogEntry = Pick<ReviewLog, 'created_at' | 'quiz_type' | 'result' | 'response_time_ms'>
+  const logs: LogEntry[] = logsRes.data ?? []
   const totalReviews = logs.length
-  const correct = logs.filter((l: ReviewLog) => l.result >= 3).length
+  const correct = logs.filter((l: LogEntry) => l.result >= 3).length
   const avgAccuracy = logs.length ? Math.round(correct / logs.length * 100) : 0
 
   // 7-day chart
@@ -50,7 +53,7 @@ async function fetchStats(): Promise<StatsData> {
     const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
     days[d] = { total: 0, correct: 0 }
   }
-  logs.forEach((l: ReviewLog) => {
+  logs.forEach((l: LogEntry) => {
     const d = l.created_at.split('T')[0]
     if (days[d]) { days[d].total++; if (l.result >= 3) days[d].correct++ }
   })
@@ -58,11 +61,11 @@ async function fetchStats(): Promise<StatsData> {
 
   // Calendar: last 12 weeks
   const calendarData: Record<string, number> = {}
-  logs.forEach((l: ReviewLog) => { const d = l.created_at.split('T')[0]; calendarData[d] = (calendarData[d] || 0) + 1 })
+  logs.forEach((l: LogEntry) => { const d = l.created_at.split('T')[0]; calendarData[d] = (calendarData[d] || 0) + 1 })
 
   // Avg daily study time
   const dayTotals = new Map<string, number>()
-  logs.forEach((l: ReviewLog) => {
+  logs.forEach((l: LogEntry) => {
     if (l.response_time_ms > 0) {
       const day = l.created_at.split('T')[0]
       dayTotals.set(day, (dayTotals.get(day) ?? 0) + l.response_time_ms)
@@ -74,7 +77,7 @@ async function fetchStats(): Promise<StatsData> {
 
   // Quiz type accuracy
   const types: Record<string, { total: number; correct: number }> = {}
-  logs.forEach((l: ReviewLog) => {
+  logs.forEach((l: LogEntry) => {
     if (!types[l.quiz_type]) types[l.quiz_type] = { total: 0, correct: 0 }
     types[l.quiz_type].total++; if (l.result >= 3) types[l.quiz_type].correct++
   })
@@ -204,8 +207,6 @@ export default function StatsPage() {
     )
   }, [calendarData])
 
-  const COLORS = ['#d97706', '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#0891b2']
-
   if (loading) return (
     <div className="flex items-center justify-center h-72">
       <LoadingSpinner size="md" label="Loading your stats..." />
@@ -303,15 +304,15 @@ export default function StatsPage() {
       {/* 7-day chart */}
       <SurfaceCard padding="lg" className="bg-gradient-to-br from-[var(--surface)] to-[var(--bg)]">
         <h3 className="h4 text-[var(--text)] mb-6">7-Day Reviews</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={weeklyData}>
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
-            <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
-            <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-            <Bar dataKey="total" fill="rgba(251, 146, 60, 0.2)" radius={[8, 8, 0, 0]} name="Total" />
-            <Bar dataKey="correct" fill="var(--accent)" radius={[8, 8, 0, 0]} name="Correct" />
-          </BarChart>
-        </ResponsiveContainer>
+        <StatsBarChart
+          data={weeklyData}
+          height={200}
+          xDataKey="date"
+          bars={[
+            { dataKey: 'total', fill: 'rgba(251,146,60,0.2)', name: 'Total', radius: [8, 8, 0, 0] },
+            { dataKey: 'correct', fill: 'var(--accent)', name: 'Correct', radius: [8, 8, 0, 0] },
+          ]}
+        />
       </SurfaceCard>
 
       {/* Upcoming Reviews Forecast */}
@@ -321,14 +322,14 @@ export default function StatsPage() {
             <CalendarDays size={18} className="text-[var(--accent)]" />
             <h3 className="h4 text-[var(--text)]">Upcoming Reviews (Next 7 Days)</h3>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={forecastData}>
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} formatter={(v) => [v, 'Due']} />
-              <Bar dataKey="count" fill="var(--accent)" radius={[6, 6, 0, 0]} name="Due" />
-            </BarChart>
-          </ResponsiveContainer>
+          <StatsBarChart
+            data={forecastData}
+            height={160}
+            xDataKey="day"
+            yAxisProps={{ allowDecimals: false }}
+            bars={[{ dataKey: 'count', fill: 'var(--accent)', name: 'Due', radius: [6, 6, 0, 0] }]}
+            tooltipFormatter={(v) => [v, 'Due']}
+          />
           <p className="text-xs text-[var(--text-secondary)] mt-3 italic">Plan your study schedule based on upcoming reviews</p>
         </SurfaceCard>
       )}
@@ -367,22 +368,7 @@ export default function StatsPage() {
         {wordsPerLevel.length > 0 && (
           <SurfaceCard padding="lg">
             <h3 className="h4 text-[var(--text)] mb-6">CEFR Levels</h3>
-            <div className="flex flex-col items-center gap-6">
-              <PieChart width={150} height={150}>
-                <Pie data={wordsPerLevel} dataKey="count" nameKey="level" cx="50%" cy="50%" outerRadius={65} innerRadius={30}>
-                  {wordsPerLevel.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-              </PieChart>
-              <div className="flex flex-wrap gap-3 justify-center">
-                {wordsPerLevel.map((item, i) => (
-                  <div key={item.level} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className="text-sm text-[var(--text)]">{item.level}: {item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StatsPieChart data={wordsPerLevel} />
           </SurfaceCard>
         )}
       </div>

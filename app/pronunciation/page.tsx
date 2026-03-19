@@ -41,9 +41,9 @@ export default function PronunciationPage() {
 
   const loadWords = async () => {
     try {
-      const { data, error } = await supabase.from('words').select('*').order('created_at', { ascending: false }).limit(200)
+      const { data, error } = await supabase.from('words').select('id, word, definition, phonetic, mongolian, part_of_speech, examples, audio_url').order('created_at', { ascending: false }).limit(50)
       if (error) { toast.error('Failed to load words'); return }
-      if (data) setWords(data)
+      if (data) setWords(data as unknown as Word[])
     } catch (err) {
       console.error('Failed to load words:', err)
       toast.error('Failed to load words')

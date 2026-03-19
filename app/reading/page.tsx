@@ -42,9 +42,9 @@ export default function ReadingPage() {
 
   const loadWords = async () => {
     try {
-      const { data, error } = await supabase.from('words').select('*')
+      const { data, error } = await supabase.from('words').select('id, word, definition, phonetic, part_of_speech, examples, mongolian')
       if (error) { toast.error('Failed to load vocabulary'); return }
-      if (data) setWords(data)
+      if (data) setWords(data as unknown as Word[])
     } catch (err) {
       console.error('Failed to load words:', err)
       toast.error('Failed to load vocabulary')
@@ -120,15 +120,8 @@ export default function ReadingPage() {
     const toAdd = unknownWords.filter(w => !sessionsAdded.includes(w))
     if (toAdd.length === 0) return
     setAddingAll(true)
-    let added = 0
-    for (const word of toAdd) {
-      try {
-        await handleAddWord(word)
-        added++
-      } catch {
-        // continue on individual failures
-      }
-    }
+    const results = await Promise.allSettled(toAdd.map(word => handleAddWord(word)))
+    const added = results.filter(r => r.status === 'fulfilled').length
     toast.success(`Added ${added} word${added !== 1 ? 's' : ''} to vocabulary!`)
     setAddingAll(false)
   }

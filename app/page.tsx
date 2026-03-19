@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase, UserProfile, Word } from '@/lib/supabase'
 import { usePageCache } from '@/lib/hooks/usePageCache'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { TrendingUp, AlertTriangle, BookOpen, Mic2, FileText, Zap, ChevronRight, Dumbbell, Shield } from 'lucide-react'
 import DailyChallengeCard from '@/components/DailyChallengeCard'
 import SurfaceCard from '@/components/design/SurfaceCard'
@@ -11,28 +12,33 @@ import InteractiveButton from '@/components/design/InteractiveButton'
 import EmptyState from '@/components/design/EmptyState'
 import HeroSection from '@/components/design/HeroSection'
 import { SkeletonStat } from '@/components/design/Skeleton'
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import GoalRing from '@/components/design/GoalRing'
+const ActivityChart = dynamic(() => import('@/components/ActivityChart'), { ssr: false })
 import { AchievementBadge } from '@/components/design/AchievementBadge'
 import { ACHIEVEMENTS, checkAchievements, AchievementStats } from '@/lib/achievements'
 import { useToastContext } from '@/components/ToastProvider'
+import { getLevelInfo } from '@/lib/xp-system'
+import { claimDailyBonus, DailyBonusResult } from '@/lib/daily-bonus'
+import DailyBonusModal from '@/components/DailyBonusModal'
 
 interface DashboardData {
   profile: UserProfile | null
   dueCount: number
   totalWords: number
-  weakWords: (Word & { ease_factor: number })[]
+  weakWords: (Pick<Word, 'id' | 'word' | 'definition'> & { ease_factor: number })[]
   recentActivity: { date: string; count: number }[]
   readingSessions: number
   pronunciationAttempts: number
   todayReviewCount: number
   masteredCount: number
   totalReviews: number
+  achievementLogs: { quiz_type: string; result: number }[]
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
   const today = new Date().toISOString().split('T')[0]
-  const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes, todayLogsRes, masteredRes, totalReviewsRes] = await Promise.all([
+  const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString()
+  const [profileRes, wordsRes, dueRes, weakRes, logsRes, readingRes, pronunciationRes, todayLogsRes, masteredRes, totalReviewsRes, achievementLogsRes] = await Promise.all([
     supabase.from('user_profile').select('*').limit(1).maybeSingle(),
     supabase.from('words').select('id', { count: 'exact', head: true }),
     supabase.from('reviews').select('id', { count: 'exact', head: true }).lte('next_review', today),
@@ -43,11 +49,13 @@ async function fetchDashboard(): Promise<DashboardData> {
     supabase.from('review_logs').select('id', { count: 'exact', head: true }).gte('created_at', today + 'T00:00:00'),
     supabase.from('reviews').select('id', { count: 'exact', head: true }).gte('repetitions', 3),
     supabase.from('review_logs').select('id', { count: 'exact', head: true }),
+    supabase.from('review_logs').select('quiz_type, result').gte('created_at', yearAgo),
   ])
 
-  const weakWords = (weakRes.data ?? [])
-    .filter((r: any) => r.words)
-    .map((r: any) => ({ ...r.words, ease_factor: r.ease_factor }))
+  type RawWeakReview = { word_id: string; ease_factor: number; words: Pick<Word, 'id' | 'word' | 'definition'>[] | null }
+  const weakWords = ((weakRes.data ?? []) as unknown as RawWeakReview[])
+    .filter((r) => r.words?.length)
+    .map((r) => ({ ...(r.words![0]), ease_factor: r.ease_factor }))
 
   const counts: Record<string, number> = {}
   ;(logsRes.data ?? []).forEach((log: any) => {
@@ -70,12 +78,14 @@ async function fetchDashboard(): Promise<DashboardData> {
     todayReviewCount: todayLogsRes.count ?? 0,
     masteredCount: masteredRes.count ?? 0,
     totalReviews: totalReviewsRes.count ?? 0,
+    achievementLogs: (achievementLogsRes.data ?? []) as { quiz_type: string; result: number }[],
   }
 }
 
 export default function Dashboard() {
   const { data, loading } = usePageCache<DashboardData>('dashboard', fetchDashboard, 30_000)
   const [streakProtected, setStreakProtected] = useState(false)
+  const [dailyBonus, setDailyBonus] = useState<DailyBonusResult | null>(null)
   const toast = useToastContext()
 
   const profile = data?.profile ?? null
@@ -88,6 +98,7 @@ export default function Dashboard() {
   const todayReviewCount = data?.todayReviewCount ?? 0
   const masteredCount = data?.masteredCount ?? 0
   const totalReviews = data?.totalReviews ?? 0
+  const achievementLogs = data?.achievementLogs ?? []
 
   // Streak freeze logic (localStorage side-effect, runs once profile loads)
   useEffect(() => {
@@ -108,43 +119,42 @@ export default function Dashboard() {
     } catch {}
   }, [profile])
 
-  // Achievement unlock check — runs once per profile load
+  // Daily login bonus — claim once per day on mount
   useEffect(() => {
-    if (!profile || !data) return
-    const currentUnlocked: string[] = (profile as any).unlocked_achievements ?? []
+    claimDailyBonus().then(result => {
+      if (result && !result.alreadyClaimed) setDailyBonus(result)
+    }).catch(err => console.error('[dashboard] claimDailyBonus:', err))
+  }, [])
 
-    const checkStats = async () => {
-      const [logsRes] = await Promise.all([
-        supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 365 * 86400000).toISOString())
-      ])
-      const logs = logsRes.data ?? []
-      const quizTypes = new Set(logs.map((l: any) => l.quiz_type))
-      const perfectSessions = logs.filter((l: any) => l.result >= 4).length >= (data?.totalReviews ?? 0) * 0.99 ? 1 : 0
-      const writingCount = logs.filter((l: any) => l.quiz_type === 'writing').length
+  // Achievement unlock check — uses pre-fetched logs from initial load (no second round-trip)
+  useEffect(() => {
+    if (!profile || !data || achievementLogs.length === 0) return
+    const currentUnlocked: string[] = (profile as unknown as { unlocked_achievements: string[] }).unlocked_achievements ?? []
 
-      const stats: AchievementStats = {
-        wordCount: totalWords,
-        totalReviews,
-        streak: profile.current_streak || 0,
-        masteredCount,
-        perfectQuizzes: perfectSessions,
-        quizTypesTried: quizTypes.size,
-        writingCount,
-      }
+    const quizTypes = new Set(achievementLogs.map((l) => l.quiz_type))
+    const perfectSessions = achievementLogs.filter((l) => l.result >= 4).length >= totalReviews * 0.99 ? 1 : 0
+    const writingCount = achievementLogs.filter((l) => l.quiz_type === 'writing').length
 
-      const newIds = checkAchievements(stats, currentUnlocked)
-      if (newIds.length === 0) return
-
-      const allUnlocked = [...currentUnlocked, ...newIds]
-      await supabase.from('user_profile').update({ unlocked_achievements: allUnlocked } as any).eq('id', (profile as any).id)
-
-      newIds.forEach(id => {
-        const badge = ACHIEVEMENTS.find(a => a.id === id)
-        if (badge) toast.success(`🏆 Badge unlocked: ${badge.label}!`)
-      })
+    const stats: AchievementStats = {
+      wordCount: totalWords,
+      totalReviews,
+      streak: profile.current_streak || 0,
+      masteredCount,
+      perfectQuizzes: perfectSessions,
+      quizTypesTried: quizTypes.size,
+      writingCount,
     }
 
-    checkStats()
+    const newIds = checkAchievements(stats, currentUnlocked)
+    if (newIds.length === 0) return
+
+    const allUnlocked = [...currentUnlocked, ...newIds]
+    const profileAny = profile as unknown as { id: string }
+    void supabase.from('user_profile').update({ unlocked_achievements: allUnlocked } as never).eq('id', profileAny.id)
+    newIds.forEach(id => {
+      const badge = ACHIEVEMENTS.find(a => a.id === id)
+      if (badge) toast.success(`🏆 Badge unlocked: ${badge.label}!`)
+    })
   }, [profile?.id])
 
   if (loading) return (
@@ -211,6 +221,13 @@ export default function Dashboard() {
 
   return (
     <div className="fade-in space-y-6">
+      <DailyBonusModal
+        isOpen={!!dailyBonus}
+        xpAwarded={dailyBonus?.xpAwarded ?? 0}
+        streakDays={dailyBonus?.streakDays ?? 0}
+        label={dailyBonus?.label ?? ''}
+        onClose={() => setDailyBonus(null)}
+      />
 
       {/* ── Hero Header ── */}
       <HeroSection
@@ -287,6 +304,35 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Level Progress Card ── */}
+      {profile && (() => {
+        const { level, label, currentXP, xpToNext, progress } = getLevelInfo(profile.total_xp ?? 0)
+        return (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 scale-in stagger-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)' }}>
+                  <Zap size={16} className="text-[var(--accent)]" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-[var(--text)]">Level {level} · {label}</p>
+                  <p className="text-[11px] text-[var(--text-secondary)]">{currentXP} / {xpToNext} XP to Level {level + 1}</p>
+                </div>
+              </div>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--accent)]">
+                {Math.round(progress * 100)}%
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${Math.round(progress * 100)}%`, background: 'var(--gradient-accent)' }}
+              />
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Daily Challenge ── */}
       <DailyChallengeCard />
 
@@ -329,22 +375,7 @@ export default function Dashboard() {
             {recentActivity.reduce((s, r) => s + r.count, 0)} reviews total
           </span>
         </div>
-        <ResponsiveContainer width="100%" height={80}>
-          <AreaChart data={recentActivity} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="activityGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <Area type="monotone" dataKey="count" stroke="var(--accent)" fill="url(#activityGrad)" strokeWidth={2} dot={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', fontSize: 12 }}
-              formatter={(v: any) => [v, 'Reviews']}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <ActivityChart data={recentActivity} />
       </SurfaceCard>
 
       {/* ── Secondary Stats ── */}
@@ -376,7 +407,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-2.5">
-            {weakWords.map((w: any) => (
+            {weakWords.map((w) => (
               <div key={w.id} className="flex justify-between items-start gap-3 pb-2.5 border-b border-[var(--border)] last:border-0 last:pb-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-[var(--text)]">{w.word}</p>
@@ -397,7 +428,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">Achievements</p>
             <p className="text-[11px] text-[var(--text-secondary)]">
-              {((profile as any).unlocked_achievements ?? []).length}/{ACHIEVEMENTS.length} unlocked
+              {((profile as unknown as { unlocked_achievements: string[] }).unlocked_achievements ?? []).length}/{ACHIEVEMENTS.length} unlocked
             </p>
           </div>
           <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
@@ -405,7 +436,7 @@ export default function Dashboard() {
               <AchievementBadge
                 key={achievement.id}
                 achievement={achievement}
-                unlocked={((profile as any).unlocked_achievements ?? []).includes(achievement.id)}
+                unlocked={((profile as unknown as { unlocked_achievements: string[] }).unlocked_achievements ?? []).includes(achievement.id)}
               />
             ))}
           </div>

@@ -20,6 +20,12 @@ import { TextPrimary, TextSecondary } from '@/components/design/Text'
 import { useToastContext } from '@/components/ToastProvider'
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import { usePageCache } from '@/lib/hooks/usePageCache'
+import dynamic from 'next/dynamic'
+import { showXPPopup } from '@/components/XPPopup'
+import { calculateQuizXP, calculateReviewXP, awardXP, getUserStreak } from '@/lib/xp-system'
+import { incrementChallengeProgress } from '@/lib/challenge-tracker'
+const LottiePlayer = dynamic(() => import('@/components/LottiePlayer'), { ssr: false })
+const LevelUpModal = dynamic(() => import('@/components/LevelUpModal'), { ssr: false })
 
 const QUIZ_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
   mcq:                 { label: 'Multiple Choice',    icon: '🔤', desc: 'Choose the correct word from 4 options',              color: '#2563eb' },
@@ -44,7 +50,7 @@ interface QuizData {
 
 async function fetchQuizData(): Promise<QuizData> {
   const [wordsRes, reviewsRes, logsRes, profileRes] = await Promise.all([
-    supabase.from('words').select('*'),
+    supabase.from('words').select('id, word, definition, part_of_speech, mongolian, examples, category, cefr_level, collocations, word_family, confused_with'),
     supabase.from('reviews').select('word_id, ease_factor'),
     supabase.from('review_logs').select('quiz_type, result').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     supabase.from('user_profile').select('interleave_ratio, interleave_category_penalty').limit(1).maybeSingle(),
@@ -66,7 +72,7 @@ async function fetchQuizData(): Promise<QuizData> {
 
   const interleaveConfig = profileRes.data ? parseInterleaveConfig(profileRes.data) : { newWordRatio: 0.25, categoryPenalty: 0.6 }
 
-  return { words: wordsRes.data ?? [], easeMap, weakTypeMap, interleaveConfig }
+  return { words: (wordsRes.data ?? []) as Word[], easeMap, weakTypeMap, interleaveConfig }
 }
 
 export default function QuizPage() {
@@ -86,7 +92,12 @@ export default function QuizPage() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [matchDone, setMatchDone] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number; totalXp: number } | null>(null)
+  const sessionXPRef = useRef(0)
   const startTimeRef = useRef(Date.now())
+  const [userStreak, setUserStreak] = useState(0)
   const toast = useToastContext()
   const { data: quizData, loading, reload: reloadQuizData } = usePageCache<QuizData>('quiz-data', fetchQuizData, 60_000)
   const words = quizData?.words ?? []
@@ -101,6 +112,11 @@ export default function QuizPage() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  // Fetch user streak once on mount so XP multiplier is accurate
+  useEffect(() => {
+    getUserStreak().then(setUserStreak).catch(err => console.error('[quiz] getUserStreak:', err))
   }, [])
 
   // Auto-speak definition when listen_and_choose question is shown
@@ -141,6 +157,32 @@ export default function QuizPage() {
       const correct = results.filter(r => r.correct).length + (feedback === 'correct' ? 1 : 0)
       const accuracy = Math.round((correct / sessionLength) * 100)
       toast.success(`Session complete! ${accuracy}% accuracy 🎉`)
+
+      // Award accumulated session XP and trigger celebration
+      const totalXP = sessionXPRef.current
+      sessionXPRef.current = 0
+      if (totalXP > 0) {
+        awardXP(totalXP).then(result => {
+          if (result?.didLevelUp) {
+            setShowLevelUp(true)
+            setShowConfetti(true)
+            setLevelUpData({ oldLevel: result.oldLevel, newLevel: result.newLevel, totalXp: result.totalXp })
+            // Fallback: hide confetti after 8s if modal not dismissed
+            setTimeout(() => { setShowLevelUp(false); setShowConfetti(false) }, 8000)
+          } else if (accuracy >= 80) {
+            setShowConfetti(true)
+            setTimeout(() => setShowConfetti(false), 6000)
+          }
+        }).catch(err => console.error('[quiz] awardXP:', err))
+      } else if (accuracy >= 80) {
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 6000)
+      }
+
+      // Track perfect quiz challenge
+      if (accuracy === 100) {
+        incrementChallengeProgress('perfect_streak').catch(err => console.error('[quiz] challenge:', err))
+      }
       return
     }
     const type = mode === 'auto' ? getWeightedQuizType(weakTypeMap) : mode as QuizType
@@ -165,6 +207,8 @@ export default function QuizPage() {
   }
 
   function startMode(m: QuizType | 'auto') {
+    sessionXPRef.current = 0
+    setShowConfetti(false); setShowLevelUp(false); setLevelUpData(null)
     setMode(m); setScore({ correct: 0, total: 0 }); setResults([])
     setSessionDone(false); setQuiz(null)
     const type = m === 'auto' ? getWeightedQuizType(weakTypeMap) : m as QuizType
@@ -186,7 +230,13 @@ export default function QuizPage() {
     setScore(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
     setResults(prev => [...prev, { word: quiz!.word, type, correct, timeMs }])
     supabase.from('review_logs').insert({ word_id: quiz!.word.id, quiz_type: type, result: correct ? 4 : 0, response_time_ms: timeMs, user_answer: answer, source: 'quiz' })
-    if (correct) toast.success('+15 XP')
+    if (correct) {
+      const easeFactor = easeMap[quiz!.word.id] ?? 2.5
+      const xp = calculateReviewXP(easeFactor, userStreak)
+      sessionXPRef.current += xp
+      showXPPopup(xp)
+      incrementChallengeProgress('flashcard_sprint').catch(err => console.error('[quiz] challenge:', err))
+    }
   }
 
   function checkTextAnswer() {
@@ -253,6 +303,27 @@ export default function QuizPage() {
   // MCQ and Matching need 4+ words; other types work with 1 word
   const needsMoreWords = words.length < 1
 
+  // Lottie celebration overlays
+  const LottieOverlays = (
+    <>
+      {showConfetti && (
+        <LottiePlayer
+          src="/animations/confetti.json"
+          variant="cover"
+          fallbackMs={5000}
+          onComplete={() => setShowConfetti(false)}
+        />
+      )}
+      <LevelUpModal
+        isOpen={!!levelUpData}
+        oldLevel={levelUpData?.oldLevel ?? 1}
+        newLevel={levelUpData?.newLevel ?? 2}
+        totalXp={levelUpData?.totalXp ?? 0}
+        onClose={() => { setLevelUpData(null); setShowLevelUp(false); setShowConfetti(false) }}
+      />
+    </>
+  )
+
   // SESSION DONE
   if (sessionDone) {
     const accuracy = results.length > 0 ? Math.round(results.filter(r => r.correct).length / results.length * 100) : 0
@@ -262,6 +333,7 @@ export default function QuizPage() {
 
     return (
       <div className="fade-in max-w-2xl mx-auto space-y-6">
+        {LottieOverlays}
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <Award size={64} className="text-[var(--accent)]" />

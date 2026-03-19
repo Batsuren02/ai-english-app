@@ -46,13 +46,23 @@ function enrichWords(wordsData: Word[], reviewsData: Review[]): WordWithReview[]
 }
 
 async function fetchWordsPage0(): Promise<{ words: WordWithReview[]; hasMore: boolean }> {
-  const [wordsRes, reviewsRes] = await Promise.all([
-    supabase.from('words').select('*').order('created_at', { ascending: false }).range(0, PAGE_SIZE - 1),
-    supabase.from('reviews').select('*'),
-  ])
+  const { data: wordsData } = await supabase
+    .from('words')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .range(0, PAGE_SIZE - 1)
+
+  if (!wordsData?.length) return { words: [], hasMore: false }
+
+  const wordIds = wordsData.map((w: Word) => w.id)
+  const { data: reviewsData } = await supabase
+    .from('reviews')
+    .select('word_id, repetitions, total_reviews, ease_factor, id, interval_days, next_review, last_reviewed, correct_count, streak')
+    .in('word_id', wordIds)
+
   return {
-    words: enrichWords(wordsRes.data ?? [], reviewsRes.data ?? []),
-    hasMore: (wordsRes.data?.length ?? 0) === PAGE_SIZE,
+    words: enrichWords(wordsData, reviewsData ?? []),
+    hasMore: wordsData.length === PAGE_SIZE,
   }
 }
 

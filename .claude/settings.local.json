@@ -88,7 +88,25 @@
       "Bash(wc -l /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/components/*.tsx)",
       "Bash(npx tsc:*)",
       "WebSearch",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(grep -r \"unlocked_achievements\\\\|xp_balance\\\\|total_xp\\\\|user_level\\\\|exp_points\" /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app --include=*.ts --include=*.tsx --include=*.sql)",
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/batsu/OneDrive/Desktop/Projects/ai-english-app -name schema.sql -o -name *init*.sql)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(find C:UsersbatsuOneDriveDesktopProjectsai-english-app -type f \\\\\\(-name *xp* -o -name *challenge* -o -name *coin* -o -name *streak* -o -name *LevelUp* -o -name *XPPopup* -o -name shop.tsx \\\\\\))",
+      "Bash(wc -l C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/app/*.tsx C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/lib/*.ts C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/components/*.tsx)",
+      "Bash(grep -rn \"TODO\\\\|FIXME\\\\|XXX\\\\|HACK\\\\|BUG\" C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/app C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/components C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/lib --include=*.ts --include=*.tsx)",
+      "Bash(grep -rn any C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/app C:/Users/batsu/OneDrive/Desktop/Projects/ai-english-app/components --include=*.ts --include=*.tsx)",
+      "Bash(ls \"C:\\\\Users\\\\batsu\\\\OneDrive\\\\Desktop\\\\Projects\\\\ai-english-app\\\\app\\\\learn\"\" 2>/dev/null || echo \"dir not found \")",
+      "Bash(findstr :3000)",
+      "Bash(taskkill /PID 64268 /F)",
+      "Bash(cmd /c \"taskkill /PID 64268 /F\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd /c \"netstat -ano | findstr LISTEN | findstr :3000\")",
+      "Bash(cmd /c \"wmic process where \"\"name=''node.exe''\"\" get ProcessId,CommandLine 2>nul | findstr next\")",
+      "Bash(cmd /c \"wmic process where \"\"name=''node.exe''\"\" get ProcessId 2>nul\")"
     ]
   }
 }
